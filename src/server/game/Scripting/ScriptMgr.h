@@ -309,6 +309,21 @@ class TC_GAME_API FormulaScript : public ScriptObject
         virtual void OnGroupRateCalculation(float& /*rate*/, uint32 /*count*/, bool /*isRaid*/) { }
 };
 
+class AllMapScript : public ScriptObject
+{
+protected:
+    AllMapScript(const char* name);
+
+public:
+    // Called when player enters any map
+    virtual void OnPlayerEnterAll(Map* /*map*/, Player* /*player*/) { }
+
+    // Called when player leaves any map
+    virtual void OnPlayerLeaveAll(Map* /*map*/, Player* /*player*/) { }
+
+    virtual void OnAllUpdate(Map* /*map*/, uint32 /*diff*/) { }
+};
+
 template<class TMap> class MapScript : public UpdatableScript<TMap>
 {
     MapEntry const* _mapEntry;
@@ -405,6 +420,9 @@ class TC_GAME_API UnitScript : public ScriptObject
         UnitScript(char const* name);
 
     public:
+        // Called before heal is received
+        virtual void ModifyHealRecieved(Unit* /*healer*/, Unit* /*target*/, uint32& /*heal*/) { }
+
         // Called when a unit deals healing to another unit
         virtual void OnHeal(Unit* /*healer*/, Unit* /*reciever*/, uint32& /*gain*/) { }
 
@@ -430,6 +448,16 @@ class TC_GAME_API CreatureScript : public ScriptObject
     public:
         // Called when a CreatureAI object is needed for the creature.
         virtual CreatureAI* GetAI(Creature* /*creature*/) const = 0;
+};
+
+class TC_GAME_API AllCreatureScript : public ScriptObject
+{
+protected:
+    AllCreatureScript(const char* name);
+
+public:
+    // Called at the end of creature update
+    virtual void OnAllCreatureUpdate(Creature* /*creature*/, uint32 /*diff*/) { }
 };
 
 class TC_GAME_API GameObjectScript : public ScriptObject
@@ -952,6 +980,10 @@ class TC_GAME_API ScriptMgr
         void OnGossipSelect(Player* player, Item* item, uint32 sender, uint32 action);
         void OnGossipSelectCode(Player* player, Item* item, uint32 sender, uint32 action, const char* code);
 
+        public: /* AllCreatureScript */
+
+        void OnCreatureUpdateAll(Creature* creature, uint32 diff);
+
     public: /* CreatureScript */
 
         CreatureAI* GetCreatureAI(Creature* creature);
@@ -1093,6 +1125,7 @@ class TC_GAME_API ScriptMgr
 
     public: /* UnitScript */
 
+        void ModifyHealRecieved(Unit* healer, Unit* target, uint32& heal);
         void OnHeal(Unit* healer, Unit* reciever, uint32& gain);
         void OnDamage(Unit* attacker, Unit* victim, uint32& damage);
         void ModifyPeriodicDamageAurasTick(Unit* target, Unit* attacker, uint32& damage);

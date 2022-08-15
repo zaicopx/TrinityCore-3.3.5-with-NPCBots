@@ -937,6 +937,8 @@ void Creature::Update(uint32 diff)
         default:
             break;
     }
+
+    sScriptMgr->OnCreatureUpdateAll(this, diff);
 }
 
 void Creature::Regenerate(Powers power)
