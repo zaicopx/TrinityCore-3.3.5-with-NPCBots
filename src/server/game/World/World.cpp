@@ -1553,6 +1553,9 @@ void World::LoadConfigSettings(bool reload)
     // Specifies if IP addresses can be logged to the database
     m_bool_configs[CONFIG_ALLOW_LOGGING_IP_ADDRESSES_IN_DATABASE] = sConfigMgr->GetBoolDefault("AllowLoggingIPAddressesInDatabase", true, true);
 
+	//allow use of Potions more than once in combat.
+	m_bool_configs[CONFIG_POTIONS_LIMIT] = sConfigMgr->GetBoolDefault("Potions.Limit", true);
+	
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);
