@@ -18,6 +18,7 @@
 // This is where scripts' loading functions should be declared:
 void AddLfgSoloScripts();
 void AddSC_skip_StarterArea();
+void AddSC_NPC_TransmogDisplayVendor();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -25,4 +26,5 @@ void AddCustomScripts()
 {
     AddLfgSoloScripts();
 	AddSC_skip_StarterArea();
+	AddSC_NPC_TransmogDisplayVendor();
 }
