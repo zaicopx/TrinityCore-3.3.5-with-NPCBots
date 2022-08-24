@@ -74,7 +74,7 @@ RealmID = 1
 #        Example:     "@prefix@/share/trinitycore"
 #        Default:     "."
 
-DataDir = "."
+DataDir = "./data"
 
 #
 #    LogsDir
@@ -83,7 +83,7 @@ DataDir = "."
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = "logs"
 
 #
 #    LoginDatabaseInfo
@@ -108,9 +108,9 @@ LogsDir = ""
 #    The SSL option will enable TLS when connecting to the specified database. If not provided or
 #    any value other than 'ssl' is set, TLS will not be used.
 
-LoginDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;auth"
-WorldDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;world"
-CharacterDatabaseInfo = "127.0.0.1;3306;trinity;trinity;characters"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;ascent;auth"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;ascent;world"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;ascent;characters"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -273,7 +273,7 @@ PlayerLimit = 0
 #                     3+ - (Enabled, More checks before kick)
 #                     0  - (Disabled)
 
-MaxOverspeedPings = 2
+MaxOverspeedPings = 0
 
 #
 #    GridUnload
@@ -309,7 +309,7 @@ InstanceMapLoadAllGrids = 0
 #                     selection screen is disconnected.
 #        Default:     900000 - (15 minutes)
 
-SocketTimeOutTime = 900000
+SocketTimeOutTime = 15000000
 
 #
 #    SocketTimeOutTimeActive
@@ -899,7 +899,7 @@ RecruitAFriend.MaxDifference = 4
 #                     2  - (Enabled, GMs/Admins)
 #                     3  - (Enabled, Admins)
 
-DisableWaterBreath = 4
+DisableWaterBreath = 0
 
 #
 #    AllFlightPaths
@@ -958,7 +958,7 @@ Instance.IgnoreLevel = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Instance.IgnoreRaid = 0
+Instance.IgnoreRaid = 1
 
 #
 #    Instance.ResetTimeHour
@@ -1020,7 +1020,7 @@ Quests.HighLevelHideDiff = 7
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Quests.IgnoreRaid = 0
+Quests.IgnoreRaid = 1
 
 #
 #    Quests.IgnoreAutoAccept
@@ -1097,7 +1097,7 @@ Guild.BankEventLogRecordsCount = 25
 #        Range:       0-11
 #        Default:     2
 
-MaxPrimaryTradeSkill = 2
+MaxPrimaryTradeSkill = 11
 
 #
 #    MinPetitionSigns
@@ -1105,7 +1105,7 @@ MaxPrimaryTradeSkill = 2
 #        Range:       0-9
 #        Default:     9
 
-MinPetitionSigns = 9
+MinPetitionSigns = 0
 
 #
 #    MaxGroupXPDistance
@@ -1156,7 +1156,7 @@ MinDiscoveredScaledXPRatio = 0
 #        Description: Time (in seconds) mail delivery is delayed when sending items.
 #        Default:     3600 - (1 hour)
 
-MailDeliveryDelay = 3600
+MailDeliveryDelay = 60
 
 #
 #    CleanOldMailTime
@@ -1205,7 +1205,7 @@ ClientCacheVersion = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Event.Announce = 0
+Event.Announce = 1
 
 #
 #    BeepAtStart
@@ -1237,7 +1237,7 @@ Motd = "Welcome to a Trinity Core server."
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Server.LoginInfo = 0
+Server.LoginInfo = 1
 
 #
 #    Command.LookupMaxResults
@@ -1252,7 +1252,7 @@ Command.LookupMaxResults = 0
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-AllowTickets = 1
+AllowTickets = 0
 
 #
 #    DeletedCharacterTicketTrace
@@ -1281,14 +1281,14 @@ DungeonFinder.OptionsMask = 1
 #        Default:     1 - (Enabled, Enforce DBC values)
 #                     0 - (Disabled, Use database values)
 
-DBC.EnforceItemAttributes = 1
+DBC.EnforceItemAttributes = 0
 
 #
 #   AccountInstancesPerHour
 #        Description: Controls the max amount of different instances player can enter within hour.
 #        Default:     5
 
-AccountInstancesPerHour = 5
+AccountInstancesPerHour = 100
 
 #
 #   Account.PasswordChangeSecurity
@@ -1634,7 +1634,7 @@ TalentsInspecting = 1
 #                     radius will be used.
 #        Default:     60
 
-ThreatRadius = 60
+ThreatRadius = 30
 
 #
 #    Rate.Creature.Aggro
@@ -1822,7 +1822,7 @@ MonsterSight = 50.000000
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-Creature.RegenHPCannotReachTargetInRaid = 1
+Creature.RegenHPCannotReachTargetInRaid = 0
 
 #
 ###################################################################################################
@@ -2453,7 +2453,7 @@ Rate.Reputation.RecruitAFriendBonus = 0.1
 #        Description: Movement speed rate.
 #        Default:     1
 
-Rate.MoveSpeed = 1
+Rate.MoveSpeed = 1.14
 
 #
 #    Rate.InstanceResetTime
@@ -2492,10 +2492,10 @@ SkillGain.Weapon    = 1
 #                     25  - (SkillChance.Green)
 #                     0   - (SkillChance.Grey)
 
-SkillChance.Orange = 100
-SkillChance.Yellow = 75
-SkillChance.Green  = 25
-SkillChance.Grey   = 0
+SkillChance.Orange = 50
+SkillChance.Yellow = 25
+SkillChance.Green  = 2
+SkillChance.Grey   = 2
 
 #
 #    SkillChance.MiningSteps
@@ -2521,7 +2521,7 @@ DurabilityLoss.InPvP = 0
 #        Note:        On 3.3.5 client always shows log message "Your items have lost 10% durability"
 #        Default:     10
 
-DurabilityLoss.OnDeath = 10
+DurabilityLoss.OnDeath = 5
 
 #
 #    DurabilityLossChance.Damage
@@ -2564,7 +2564,7 @@ DurabilityLossChance.Block = 0.05
 #                     MaxPlayerLevel+1 - (Disabled)
 #                     -10              - (Enabled, Level 1+ characters have 10 minute duration)
 
-Death.SicknessLevel = 11
+Death.SicknessLevel = 81
 
 #
 #    Death.CorpseReclaimDelay.PvP
@@ -3118,7 +3118,7 @@ CharDelete.KeepDays = 30
 #                       bugs out and doesn't switch the check mark. It has no effect on the actual tracking though).
 #                     * The minimap dots are yellow for both resources.
 
-AllowTrackBothResources = 0
+AllowTrackBothResources = 1
 
 #
 #    PlayerStart.AllReputation
@@ -3397,7 +3397,7 @@ AuctionHouseBot.Update.Interval = 20
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Seller.Enabled = 0
+AuctionHouseBot.Seller.Enabled = 1
 
 #
 #    AuctionHouseBot.Alliance.Items.Amount.Ratio
@@ -3432,7 +3432,7 @@ AuctionHouseBot.MinTime = 1
 #       Description: Maximum time for the new auction in hours
 #       Default:     72 - (Hours)
 
-AuctionHouseBot.MaxTime = 72
+AuctionHouseBot.MaxTime = 2
 
 #
 #    AuctionHouseBot.Class.CLASS.Allow.Zero = 0
@@ -3477,7 +3477,7 @@ AuctionHouseBot.Items.Loot = 1
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Items.Misc = 0
+AuctionHouseBot.Items.Misc = 1
 
 #
 #    AuctionHouseBot.Bind.*
@@ -3518,7 +3518,7 @@ AuctionHouseBot.ItemsPerCycle.Boost = 1000
 #                    Usually this value is used always when auction table is already initialised.
 #       Default:     20
 
-AuctionHouseBot.ItemsPerCycle.Normal = 20
+AuctionHouseBot.ItemsPerCycle.Normal = 50
 
 #
 #    AuctionHouseBot.BuyPrice.Seller
@@ -3534,8 +3534,8 @@ AuctionHouseBot.BuyPrice.Seller = 0
 #       Default:     0.6 - (Min)
 #                    0.9 - (Max)
 
-AuctionHouseBot.BidPrice.Min = 0.6
-AuctionHouseBot.BidPrice.Max = 0.9
+AuctionHouseBot.BidPrice.Min = 0.60
+AuctionHouseBot.BidPrice.Max = 0.99
 
 #
 #    AuctionHouseBot.Alliance.Price.Ratio
@@ -3598,7 +3598,7 @@ AuctionHouseBot.Class.Glyph.Price.Ratio = 100
 #       Default:     0 - (Disabled)
 
 AuctionHouseBot.Items.ItemLevel.Min = 0
-AuctionHouseBot.Items.ItemLevel.Max = 0
+AuctionHouseBot.Items.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.Items.ReqLevel.*
@@ -3606,7 +3606,7 @@ AuctionHouseBot.Items.ItemLevel.Max = 0
 #       Default:     0 - (Disabled)
 
 AuctionHouseBot.Items.ReqLevel.Min = 0
-AuctionHouseBot.Items.ReqLevel.Max = 0
+AuctionHouseBot.Items.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Items.ReqSkill.*
@@ -3615,7 +3615,7 @@ AuctionHouseBot.Items.ReqLevel.Max = 0
 #                    1 - (Enabled)
 
 AuctionHouseBot.Items.ReqSkill.Min = 0
-AuctionHouseBot.Items.ReqSkill.Max = 0
+AuctionHouseBot.Items.ReqSkill.Max = 450
 
 #
 #    AuctionHouseBot.Items.Amount.*
@@ -3682,7 +3682,7 @@ AuctionHouseBot.Class.Glyph = 3
 #       Default:     0
 
 AuctionHouseBot.Class.Misc.Mount.ReqLevel.Min = 0
-AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 0
+AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.Misc.Mount.ReqSkill.*
@@ -3690,7 +3690,7 @@ AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Misc.Mount.ReqSkill.Min = 0
-AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 0
+AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 450
 
 #
 #    AuctionHouseBot.Class.Glyph.ReqLevel.*
@@ -3698,7 +3698,7 @@ AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Glyph.ReqLevel.Min = 0
-AuctionHouseBot.Class.Glyph.ReqLevel.Max = 0
+AuctionHouseBot.Class.Glyph.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.Glyph.ItemLevel.*
@@ -3706,7 +3706,7 @@ AuctionHouseBot.Class.Glyph.ReqLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Glyph.ItemLevel.Min = 0
-AuctionHouseBot.Class.Glyph.ItemLevel.Max = 0
+AuctionHouseBot.Class.Glyph.ItemLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.TradeGood.ItemLevel.*
@@ -3714,7 +3714,7 @@ AuctionHouseBot.Class.Glyph.ItemLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.TradeGood.ItemLevel.Min = 0
-AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 0
+AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.Class.Container.ItemLevel.*
@@ -3722,7 +3722,7 @@ AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Container.ItemLevel.Min = 0
-AuctionHouseBot.Class.Container.ItemLevel.Max = 0
+AuctionHouseBot.Class.Container.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.forceIncludeItems
@@ -3730,7 +3730,7 @@ AuctionHouseBot.Class.Container.ItemLevel.Max = 0
 #                    List of ids with delimiter ','
 #       Default:     ""
 
-AuctionHouseBot.forceIncludeItems = ""
+AuctionHouseBot.forceIncludeItems = "4389,4382,4371,4357,4364,4361,4363,4404,2770,2771,2775,2318,2319,4234,4304,2589,2996,2592,2997,4306,4305,4338,10940,10938,39774,43124,43122,43120,43118,43116,39469,37101,8845,2447,765,785,2453,3355,2450,3356,3357,3358,8846,13464,13465,13467,13463,14256"
 
 #
 #    AuctionHouseBot.forceExcludeItems
@@ -3793,7 +3793,7 @@ AuctionHouseBot.Class.RandomStackRatio.Glyph = 0
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Buyer.Enabled = 0
+AuctionHouseBot.Buyer.Enabled = 1
 
 #
 #    AuctionHouseBot.Buyer.FACTION.Enabled
@@ -3801,9 +3801,9 @@ AuctionHouseBot.Buyer.Enabled = 0
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Buyer.Alliance.Enabled = 0
-AuctionHouseBot.Buyer.Horde.Enabled = 0
-AuctionHouseBot.Buyer.Neutral.Enabled = 0
+AuctionHouseBot.Buyer.Alliance.Enabled = 1
+AuctionHouseBot.Buyer.Horde.Enabled = 1
+AuctionHouseBot.Buyer.Neutral.Enabled = 1
 
 #    AuctionHouseBot.Buyer.ChanceFactor
 #       Description: k value in the formula used for the chance to buy an item "100^(1 + (1 - (AuctionBid / ItemPrice)) / k)"
@@ -3858,7 +3858,7 @@ AuctionHouseBot.Buyer.ChanceMultiplier.Yellow = 100
 #                    The smaller this value is, the more chances you give for an item to be bought by AHBot.
 #       Default:     20 (20min.)
 
-AuctionHouseBot.Buyer.Recheck.Interval = 20
+AuctionHouseBot.Buyer.Recheck.Interval = 5
 
 #
 ###################################################################################################
@@ -4143,7 +4143,7 @@ Metric.Enable = 0
 #        Default:     10 seconds
 #
 
-Metric.Interval = 1
+Metric.Interval = 10
 
 #
 #    Metric.ConnectionInfo
@@ -4194,7 +4194,7 @@ NpcBot.Enable = 1
 #        Default:     1
 #        Max:         39
 
-NpcBot.MaxBots = 1
+NpcBot.MaxBots = 9
 
 #
 #    NpcBot.MaxBotsPerClass
@@ -4208,7 +4208,7 @@ NpcBot.MaxBotsPerClass = 0
 #        Description: Make botgiver only offer bots of player faction (normal classes).
 #        Default:     0 - disable
 
-NpcBot.Botgiver.FilterRaces = 0
+NpcBot.Botgiver.FilterRaces = 1
 
 #
 #    NpcBot.BaseFollowDistance
@@ -4227,7 +4227,7 @@ NpcBot.BaseFollowDistance = 30
 #        Note:        Maximum overall xp reduction is 90%.
 #        Default:     0
 
-NpcBot.XpReduction = 0
+NpcBot.XpReduction = 20
 
 #
 #    NpcBot.HealTargetIconMask
@@ -4254,12 +4254,12 @@ NpcBot.XpReduction = 0
 #                     64 - Cross
 #                     128 - Skull
 
-NpcBot.HealTargetIconMask = 0
-NpcBot.TankTargetIconMask = 0
-NpcBot.OffTankTargetIconMask = 0
-NpcBot.DPSTargetIconMask = 0
-NpcBot.RangedDPSTargetIconMask = 0
-NpcBot.NoDPSTargetIconMask = 0
+NpcBot.HealTargetIconMask = 1
+NpcBot.TankTargetIconMask = 128
+NpcBot.OffTankTargetIconMask = 4
+NpcBot.DPSTargetIconMask = 2
+NpcBot.RangedDPSTargetIconMask = 8
+NpcBot.NoDPSTargetIconMask = 64
 
 #
 #    NpcBot.Mult.Damage.Physical
@@ -4270,9 +4270,9 @@ NpcBot.NoDPSTargetIconMask = 0
 #        Minimum:     0.1
 #        Maximum:    10.0
 
-NpcBot.Mult.Damage.Physical = 1.0
-NpcBot.Mult.Damage.Spell    = 1.0
-NpcBot.Mult.Healing         = 1.0
+NpcBot.Mult.Damage.Physical = 0.4
+NpcBot.Mult.Damage.Spell    = 0.4
+NpcBot.Mult.Healing         = 1.5
 
 #
 #    NpcBot.Enable.Dungeon
@@ -4288,9 +4288,9 @@ NpcBot.Mult.Healing         = 1.0
 #                     1 - (NpcBot.Enable.DungeonFinder)
 
 NpcBot.Enable.Dungeon       = 1
-NpcBot.Enable.Raid          = 0
-NpcBot.Enable.BG            = 0
-NpcBot.Enable.Arena         = 0
+NpcBot.Enable.Raid          = 1
+NpcBot.Enable.BG            = 1
+NpcBot.Enable.Arena         = 1
 NpcBot.Enable.DungeonFinder = 1
 
 #
@@ -4309,7 +4309,7 @@ NpcBot.Limit.Raid    = 1
 #        Note:        This value is for level 80 characters, for lower levels cost is reduced.
 #        Default:     1000000 (100 gold)
 
-NpcBot.Cost = 1000000
+NpcBot.Cost = 10000
 
 #
 #    NpcBot.UpdateDelay.Base
@@ -4331,8 +4331,8 @@ NpcBot.UpdateDelay.Base = 0
 #        Default:     0 - (No delay)
 #                     1000 - (1 second)
 
-NpcBot.EngageDelay.DPS  = 0
-NpcBot.EngageDelay.Heal = 0
+NpcBot.EngageDelay.DPS  = 3000
+NpcBot.EngageDelay.Heal = 3000
 
 #
 #    NpcBot.PvP
@@ -4385,7 +4385,7 @@ NpcBot.EquipmentDisplay.ShowHelm  = 1
 #        Default:     0 - (Disable)
 #                     1 - (Enable)
 
-NpcBot.Gossip.ShowEquipmentListItems = 0
+NpcBot.Gossip.ShowEquipmentListItems = 1
 
 #
 #    NpcBot.NewClasses.<Class>.Enable
@@ -4458,7 +4458,7 @@ NpcBot.OwnershipExpireTime = 0
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-NpcBot.EnrageOnDismiss = 1
+NpcBot.EnrageOnDismiss = 0
 
 #
 ###################################################################################################
@@ -4684,7 +4684,7 @@ SoloLFG.Announce = 1
 # Example : 60 to force 1scde (real time) = 1 minute (realm timer)
 #
 
-Custom.SpeedGame = 1
+Custom.SpeedGame = 15
 
 #
 ###################################################################################################
@@ -4753,5 +4753,5 @@ Potions.Limit = false
 ########################ICC GUNSHIP HEALTH##########################################################
 # Gunship HP 0.2 = 20% 0.5 = 50% 0.75 = 75%
 # Default: 1 (100%)
-GunshipHP = 1
+GunshipHP = 0.2
 #################################################################################################
