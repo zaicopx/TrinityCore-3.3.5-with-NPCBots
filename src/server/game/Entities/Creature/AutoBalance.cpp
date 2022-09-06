@@ -41,22 +41,10 @@
 # include "botmgr.h"
 #endif
 
-#if !defined(_MSC_VER) || _MSC_VER >= 1600
-# define SCRIPT_VERSION_LAST
-#endif
-
-#ifdef SCRIPT_VERSION_LAST
 # define NOTHING nullptr
 # define UNORDERED_MAP std::unordered_map
 # define GetGUIDLow GetGUID().GetCounter
 # define area_name AreaName
-#else
-# define NOTHING NULL
-# define GetLevel getLevel
-# define GetPowerType getPowerType
-# define SetPowerType setPowerType
-# define SetStatFlatModifier SetModifierValue
-#endif
 
 // The map values correspond with the .AutoBalance.XX.Name entries in the configuration file.
 static std::map<uint32, int32> forcedCreatureIds;
@@ -90,11 +78,7 @@ int32 GetForcedNumPlayers(uint32 creatureId)
 
 AreaTableEntry const* GetAreaEntryById(uint32 id)
 {
-#ifdef SCRIPT_VERSION_LAST
     return sAreaTableStore.LookupEntry(id);
-#else
-    return GetAreaEntryByAreaID(id);
-#endif
 }
 
 void GetAreaLevel(Map const* map, uint8 areaid, uint8 &minlevel, uint8 &maxlevel)
@@ -102,31 +86,18 @@ void GetAreaLevel(Map const* map, uint8 areaid, uint8 &minlevel, uint8 &maxlevel
     LFGDungeonEntry const* dungeon = GetLFGDungeon(map->GetId(), map->GetDifficulty());
     if (dungeon && (map->IsDungeon() || map->IsRaid()))
     {
-#ifdef SCRIPT_VERSION_LAST
         minlevel = dungeon->MinLevel;
         maxlevel = dungeon->TargetLevel ? dungeon->TargetLevel : dungeon->MaxLevel;
-#else
-        minlevel = dungeon->minlevel;
-        maxlevel = dungeon->reclevel ? dungeon->reclevel : dungeon->maxlevel;
-#endif
     }
 
     if (!minlevel && !maxlevel)
     {
         AreaTableEntry const* areaEntry = GetAreaEntryById(areaid);
-#ifdef SCRIPT_VERSION_LAST
         if (areaEntry && areaEntry->ExplorationLevel > 0)
         {
             minlevel = areaEntry->ExplorationLevel;
             maxlevel = areaEntry->ExplorationLevel;
         }
-#else
-        if (areaEntry && areaEntry->area_level > 0)
-        {
-            minlevel = areaEntry->area_level;
-            maxlevel = areaEntry->area_level;
-        }
-#endif
     }
 }
 
@@ -233,11 +204,7 @@ class AutoBalance_PlayerScript : public PlayerScript
 public:
     AutoBalance_PlayerScript() : PlayerScript("AutoBalance_PlayerScript") { }
 
-#ifdef SCRIPT_VERSION_LAST
-    void OnLogin(Player* player, bool firstLogin) override
-#else
-    void OnLogin(Player* player) override
-#endif
+    void OnLogin(Player* player, bool /*firstLogin*/) override
     {
         if (AnnounceAB)
             ChatHandler(player->GetSession()).SendSysMessage("This server is running the |cff4CFF00AutoBalance |rmodule.");
@@ -305,7 +272,7 @@ public:
     }
 
 private:
-    void ModifyAmount(Unit* source, Unit* target, uint32 &value) const
+    void ModifyAmount(Unit* source, Unit* /*target*/, uint32 &value) const
     {
         if (!Is_AB_enabled)
             return;
@@ -333,11 +300,11 @@ uint32 GetMaxLevelInZone(uint32 zoneId)
     return zoneLevels.count(zoneId) != 0 ? zoneLevels[zoneId] : 0;
 }
 
+#if MOD_PRESENT_NPCBOTS == 1
 uint32 CountedControlledCreatures(Player const* player)
 {
     uint32 count = 0;
 
-#if MOD_PRESENT_NPCBOTS == 1
     if (CountNpcBots && player->HaveBot())
     {
         BotMap const* botmap = player->GetBotMgr()->GetBotMap();
@@ -345,6 +312,10 @@ uint32 CountedControlledCreatures(Player const* player)
             if (itr->second && itr->second->IsInMap(player))
                 count++;
     }
+#else
+uint32 CountedControlledCreatures(Player const* /*player*/)
+{
+    uint32 count = 0;
 #endif
 
     return count;
@@ -958,9 +929,7 @@ private:
     }
 };
 
-#ifdef SCRIPT_VERSION_LAST
 using namespace Trinity::ChatCommands;
-#endif
 
 #define GM_COMMANDS rbac::RBACPermissions(197)
 
@@ -969,48 +938,27 @@ class AutoBalance_CommandScript : public CommandScript
 public:
     AutoBalance_CommandScript() : CommandScript("AutoBalance_CommandScript") { }
 
-#ifdef SCRIPT_VERSION_LAST
     ChatCommandTable GetCommands() const override
     {
         static ChatCommandTable ABCommandTable =
         {
-            { "mstats",     HandleABMStatsCommand,          GM_COMMANDS, Console::Yes },
-            { "zstats",     HandleABZStatsCommand,          GM_COMMANDS, Console::Yes },
-            { "setoffset",  HandleABSetOffsetCommand,       GM_COMMANDS, Console::Yes },
-            { "getoffset",  HandleABGetOffsetCommand,       GM_COMMANDS, Console::Yes },
-            { "mapstat",    HandleABMapStatsCommand,        GM_COMMANDS, Console::No  },
-            { "crstat",     HandleABCreatureStatsCommand,   GM_COMMANDS, Console::No  },
+            { "mstats",     HandleABMStatsCommand,          GM_COMMANDS,    Console::Yes },
+            { "zstats",     HandleABZStatsCommand,          GM_COMMANDS,    Console::Yes },
+            { "setoffset",  HandleABSetOffsetCommand,       GM_COMMANDS,    Console::Yes },
+            { "getoffset",  HandleABGetOffsetCommand,       GM_COMMANDS,    Console::Yes },
+            { "mapstat",    HandleABMapStatsCommand,        GM_COMMANDS,    Console::No  },
+            { "crstat",     HandleABCreatureStatsCommand,   GM_COMMANDS,    Console::No  },
         };
 
         static ChatCommandTable commandTable =
         {
-            { "vas",        ABCommandTable                                            },
+            { "vas",        ABCommandTable                                               },
         };
-#else
-    ChatCommand* GetCommands() const
-    {
-        static ChatCommand ABCommandTable[] =
-        {
-            { "mstats",     GM_COMMANDS, true, &HandleABMStatsCommand,        "Lists all registered map update timers",                                                             NULL },
-            { "zstats",     GM_COMMANDS, true, &HandleABZStatsCommand,        "Lists all registered zones with players count",                                                             NULL },
-            { "setoffset",  GM_COMMANDS, true, &HandleABSetOffsetCommand,     "Sets the global Player Difficulty Offset for instances. Example: (You + offset(1) = 2 player difficulty).", NULL },
-            { "getoffset",  GM_COMMANDS, true, &HandleABGetOffsetCommand,     "Shows current global player offset value",                                                                  NULL },
-            { "mapstat",    GM_COMMANDS, false,&HandleABMapStatsCommand,      "Shows current autobalance information for this map-",                                                       NULL },
-            { "crstat",     GM_COMMANDS, false,&HandleABCreatureStatsCommand, "Shows current autobalance information for selected creature.",                                              NULL },
-            { NULL,         0,           false,NULL,                          "",                                                                                                          NULL }
-        };
-
-        static ChatCommand commandTable[] =
-        {
-            { "vas",        GM_COMMANDS, true, NULL,                          "", ABCommandTable },
-            { NULL,         0,           false,NULL,                          "",           NULL }
-        };
-#endif
 
         return commandTable;
     }
 
-    static bool HandleABMStatsCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleABMStatsCommand(ChatHandler* handler)
     {
         if (recalcTimers.empty())
         {
@@ -1021,19 +969,13 @@ public:
         for (PlayersRecalcMap::const_iterator itr = recalcTimers.begin(); itr != recalcTimers.end(); ++itr)
         {
             MapEntry const* m = sMapStore.LookupEntry(itr->first);
-            handler->PSendSysMessage("Map: %s (%u), cur time: %u",
-#ifdef SCRIPT_VERSION_LAST
-                m->MapName[0],
-#else
-                m->name[0],
-#endif
-                itr->first, itr->second);
+            handler->PSendSysMessage("Map: %s (%u), cur time: %u", m->MapName[0], itr->first, itr->second);
         }
 
         return true;
     }
 
-    static bool HandleABZStatsCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleABZStatsCommand(ChatHandler* handler)
     {
         if (zonePlayers.empty())
         {
@@ -1051,37 +993,28 @@ public:
         return true;
     }
 
-    static bool HandleABSetOffsetCommand(ChatHandler* handler, const char* args)
+    static bool HandleABSetOffsetCommand(ChatHandler* handler, Optional<int8> offset)
     {
-        if (!*args)
+        if (!offset)
         {
             handler->PSendSysMessage(".vas setoffset #");
             handler->PSendSysMessage("Sets the Player Difficulty Offset for instances. Example: (You + offset(1) = 2 player difficulty).");
             return false;
         }
-        char* offset = strtok((char*)args, " ");
-        int32 offseti = -1;
 
-        if (!offset)
-        {
-            handler->PSendSysMessage("Error changing Player Difficulty Offset! Please try again.");
-            return false;
-        }
-
-        offseti = (uint32)atoi(offset);
-        handler->PSendSysMessage("Changing Player Difficulty Offset to %i.", offseti);
-        PlayerCountDifficultyOffset = offseti;
+        handler->PSendSysMessage("Changing Player Difficulty Offset to %i.", int32(*offset));
+        PlayerCountDifficultyOffset = *offset;
 
         return true;
     }
 
-    static bool HandleABGetOffsetCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleABGetOffsetCommand(ChatHandler* handler)
     {
         handler->PSendSysMessage("Current Player Difficulty Offset = %i", PlayerCountDifficultyOffset);
         return true;
     }
 
-    static bool HandleABMapStatsCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleABMapStatsCommand(ChatHandler* handler)
     {
         Player* pl = handler->getSelectedPlayer();
         if (!pl)
@@ -1100,7 +1033,7 @@ public:
         return true;
     }
 
-    static bool HandleABCreatureStatsCommand(ChatHandler* handler, const char* /*args*/)
+    static bool HandleABCreatureStatsCommand(ChatHandler* handler)
     {
         Creature* target = handler->getSelectedCreature();
         if (!target)
@@ -1134,12 +1067,8 @@ void AddSC_AutoBalance()
 
 void InitAutoBalanceSystem()
 {
-#ifdef SCRIPT_VERSION_LAST
     std::string const& oldcontext = sScriptMgr->GetCurrentScriptContext();
     sScriptMgr->SetScriptContext("__autobalance__");
     AddSC_AutoBalance();
     sScriptMgr->SetScriptContext(oldcontext);
-#else
-    AddSC_AutoBalance();
-#endif
 }
