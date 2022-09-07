@@ -4755,3 +4755,11 @@ Potions.Limit = false
 # Default: 1 (100%)
 GunshipHP = 0.2
 #################################################################################################
+
+###################################################################################################
+#Taxi speed
+#Speed of taxi flight 1 is normal, 2 is x2, 3 is x3, etc, etc
+# to make flights slower 0.5 is 50% speed of normal and 0.75 is 75% of normal. 
+# 500 seems to double flight speed so I suggest using 500+ if your goal is to make flight fast
+Custom.SpeedTaxi = 500
+###################################################################################################
