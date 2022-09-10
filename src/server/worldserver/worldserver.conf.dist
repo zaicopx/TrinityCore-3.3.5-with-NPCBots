@@ -4844,7 +4844,7 @@ Custom.GainHonorOnBossKill.AreanPoints = 1
 # Default : 0 (No gold will be given )
 #
 # Min Player level Required.
-Custom.GainHonorOnGuardKill.Gold.Level = 80
+Custom.GainGoldOnKill.MinLevel = 80
 #
 Custom.GainHonorOnGuardKill.Gold = 0
 #
