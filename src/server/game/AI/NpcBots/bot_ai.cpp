@@ -13940,7 +13940,7 @@ void bot_ai::CancelOrder(BotOrder const& order)
             me->GetName().c_str(), uint32(order._type));
         return;
     }
-    if (_orders.front()._type != order._type || _orders.front().params.whole != order.params.whole)
+    if (_orders.front()._type != order._type)
     {
         TC_LOG_ERROR("scripts", "bot_ai::CancelOrder: %s front order (type %u) is different from cur order (type %u)!",
             me->GetName().c_str(), uint32(_orders.front()._type), uint32(order._type));
@@ -13958,7 +13958,7 @@ void bot_ai::CompleteOrder(BotOrder const& order)
             me->GetName().c_str(), uint32(order._type));
         return;
     }
-    if (_orders.front()._type != order._type || _orders.front().params.whole != order.params.whole)
+    if (_orders.front()._type != order._type)
     {
         TC_LOG_ERROR("scripts", "bot_ai::CompleteOrder: %s front order (type %u) is different from cur order (type %u)!",
             me->GetName().c_str(), uint32(_orders.front()._type), uint32(order._type));

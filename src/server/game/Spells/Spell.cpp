@@ -5218,6 +5218,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                 return SPELL_FAILED_NOT_READY;
         }
 
+        //npcbot
         if (m_caster->GetTypeId() == TYPEID_UNIT && !m_caster->ToCreature()->IsNPCBot() &&
             m_caster->ToCreature()->HasSpellCooldown(m_spellInfo->Id))
         {
@@ -5227,6 +5228,7 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
             else
                 return SPELL_FAILED_NOT_READY;
         }
+        //end npcbot
     }
 
     if (m_spellInfo->HasAttribute(SPELL_ATTR7_IS_CHEAT_SPELL) && m_caster->IsUnit() && !m_caster->ToUnit()->HasUnitFlag2(UNIT_FLAG2_ALLOW_CHEAT_SPELLS))

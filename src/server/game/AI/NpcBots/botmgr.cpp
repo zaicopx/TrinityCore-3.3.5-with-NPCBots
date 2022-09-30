@@ -255,7 +255,7 @@ void BotMgr::LoadConfig(bool reload)
     if (uint8 interFlags = (_noDpsTargetIconFlags & dpsFlags))
     {
         _noDpsTargetIconFlags &= ~interFlags;
-        TC_LOG_ERROR("scripts", "BotMgr::LoadConfig: _noDpsTargetIconFlags intersects with targets flags 0x%02X! Removed, new mask: 0x%02X",
+        TC_LOG_ERROR("scripts", "BotMgr::LoadConfig: NoDPSTargetIconMask intersects with dps targets flags 0x%02X! Removed, new mask: 0x%02X",
             uint32(interFlags), uint32(_noDpsTargetIconFlags));
     }
 
