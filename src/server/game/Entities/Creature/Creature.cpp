@@ -2715,7 +2715,7 @@ void Creature::SendZoneUnderAttackMessage(Player* attacker)
 
 uint32 Creature::GetShieldBlockValue() const                  //dunno mob block value
 {
-    //npcbot - bot block value is fully calculated into botAI
+    //npcbot - bot block value is fully calculated inside botAI
     if (bot_AI)
     {
         uint32 blockValue = bot_AI->GetShieldBlockValue();

@@ -994,7 +994,7 @@ public:
 
         void BreakCC(uint32 diff) override
         {
-            if (me->GetLevel() >= 35 && _spec == SPEC_PALADIN_RETRIBUTION && IsSpellReady(HAND_OF_FREEDOM_1, diff) && Rand() < 30 && me->HasAuraWithMechanic(1<<MECHANIC_STUN))
+            if (me->GetLevel() >= 35 && _spec == BOT_SPEC_PALADIN_RETRIBUTION && IsSpellReady(HAND_OF_FREEDOM_1, diff) && Rand() < 30 && me->HasAuraWithMechanic(1<<MECHANIC_STUN))
             {
                 if (me->IsMounted())
                     me->RemoveAurasByType(SPELL_AURA_MOUNTED);

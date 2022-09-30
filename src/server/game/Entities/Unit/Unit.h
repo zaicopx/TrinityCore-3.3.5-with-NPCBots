@@ -1832,8 +1832,10 @@ class TC_GAME_API Unit : public WorldObject
 
         std::string GetDebugInfo() const override;
 
+        //npcbot
         bool HasReactive(ReactiveType reactive) const { return m_reactiveTimer[reactive] > 0; }
         void ClearReactive(ReactiveType reactive);
+        //end npcbot
 
     protected:
         explicit Unit (bool isWorldObject);

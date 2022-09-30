@@ -31,7 +31,7 @@ enum BlademasterPassives
 };
 enum BlademasterSpecial
 {
-    NPC_MIRROR_IMAGE                        = 70552,
+    NPC_MIRROR_IMAGE_BM                     = 70552,
     TRANSPARENCY                            = SPELL_TRANSPARENCY_50,
     BLACK_COLOR                             = SPELL_VERTEX_COLOR_BLACK,
     STUN_FREEZE                             = SPELL_STUN_FREEZE_ANIM,
@@ -481,7 +481,7 @@ public:
 
             for (uint8 i = 0; i != illusionsCount; ++i)
             {
-                Creature* illusion = me->SummonCreature(NPC_MIRROR_IMAGE, *me, TEMPSUMMON_MANUAL_DESPAWN);
+                Creature* illusion = me->SummonCreature(NPC_MIRROR_IMAGE_BM, *me, TEMPSUMMON_MANUAL_DESPAWN);
                 if (!illusion)
                     continue;
 
