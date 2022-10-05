@@ -2324,7 +2324,7 @@ public:
             bot_ai::DamageDealt(victim, damage, damageType);
         }
 
-        void DamageTaken(Unit* u, uint32& damage, DamageEffectType /*damageType*/, SpellInfo const* spellInfo) override
+        void OnBotDamageTaken(Unit* /*attacker*/, uint32 damage, CleanDamage const* /*cleanDamage*/, DamageEffectType /*damagetype*/, SpellInfo const* spellInfo) override
         {
             // Divine Sacrifice helper - calculate remaining damage amount and find if we can be one-shot'ed
             if (damage && _sacDamage < int32(me->GetMaxHealth() / 4))
@@ -2343,7 +2343,10 @@ public:
                     }
                 }
             }
+        }
 
+        void DamageTaken(Unit* u, uint32& /*damage*/, DamageEffectType /*damageType*/, SpellInfo const* /*spellInfo*/) override
+        {
             if (!u)
                 return;
             if (!u->IsInCombat() && !me->IsInCombat())
