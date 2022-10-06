@@ -23,6 +23,7 @@
 #include "World.h"
 #include "WorldDatabase.h"
 #include "WorldSession.h"
+#include "QueryPackets.h"
 
 /*
 Name: script_bot_commands
@@ -71,6 +72,7 @@ public:
             { "mount",      HandleNpcBotDebugMountCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_MOUNT,        Console::No  },
             { "spellvisual",HandleNpcBotDebugSpellVisualCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_VISUAL,       Console::No  },
             { "states",     HandleNpcBotDebugStatesCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
+            { "names",      HandleNpcBotDebugNamesCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
         static ChatCommandTable npcbotSetCommandTable =
@@ -157,6 +159,59 @@ public:
             { "npcbot",     npcbotCommandTable                                                                                      },
         };
         return commandTable;
+    }
+
+    static bool HandleNpcBotDebugNamesCommand(ChatHandler* handler, Optional<std::string_view> name)
+    {
+        Creature* target = handler->getSelectedCreature();
+        if (!target || !name)
+        {
+            handler->SendSysMessage("Syntax: .npcbot debug names #name");
+            return true;
+        }
+
+        CreatureTemplate const* ci = target->GetCreatureTemplate();
+        LocaleConstant loc = LocaleConstant(handler->GetSessionDbLocaleIndex());
+
+        WorldPackets::Query::QueryCreatureResponse queryTemp;
+        std::string locName(*name), locTitle = ci->Title;
+        if (CreatureLocale const* cl = sObjectMgr->GetCreatureLocale(ci->Entry))
+        {
+            //ObjectMgr::GetLocaleString(cl->Name, loc, locName);
+            ObjectMgr::GetLocaleString(cl->Title, loc, locTitle);
+        }
+        queryTemp.CreatureID = ci->Entry;
+        queryTemp.Allow = true;
+        queryTemp.Stats.Name = locName;
+        queryTemp.Stats.NameAlt = locTitle;
+        queryTemp.Stats.CursorName = ci->IconName;
+        queryTemp.Stats.Flags = ci->type_flags;
+        queryTemp.Stats.CreatureType = ci->type;
+        queryTemp.Stats.CreatureFamily = ci->family;
+        queryTemp.Stats.Classification = ci->rank;
+        memcpy(queryTemp.Stats.ProxyCreatureID, ci->KillCredit, sizeof(uint32) * MAX_KILL_CREDIT);
+        queryTemp.Stats.CreatureDisplayID[0] = ci->Modelid1;
+        queryTemp.Stats.CreatureDisplayID[1] = ci->Modelid2;
+        queryTemp.Stats.CreatureDisplayID[2] = ci->Modelid3;
+        queryTemp.Stats.CreatureDisplayID[3] = ci->Modelid4;
+        queryTemp.Stats.HpMulti = ci->ModHealth;
+        queryTemp.Stats.EnergyMulti = ci->ModMana;
+        queryTemp.Stats.Leader = ci->RacialLeader;
+        for (uint32 i = 0; i < MAX_CREATURE_QUEST_ITEMS; ++i)
+            queryTemp.Stats.QuestItems[i] = 0;
+        if (std::vector<uint32> const* items = sObjectMgr->GetCreatureQuestItemList(ci->Entry))
+            for (uint32 i = 0; i < MAX_CREATURE_QUEST_ITEMS; ++i)
+                if (i < items->size())
+                    queryTemp.Stats.QuestItems[i] = (*items)[i];
+        queryTemp.Stats.CreatureMovementInfoID = ci->movementId;
+        queryTemp.Write();
+        queryTemp.ShrinkToFit();
+
+        WorldPacket response = queryTemp.Move();
+        handler->GetSession()->SendPacket(&response);
+
+        handler->SendSysMessage("Done.");
+        return true;
     }
 
     static bool HandleNpcBotDebugStatesCommand(ChatHandler* handler)
