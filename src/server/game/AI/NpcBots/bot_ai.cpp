@@ -15248,7 +15248,7 @@ bool bot_ai::GlobalUpdate(uint32 diff)
 
             if (_lastZoneId != newzone)
                 _OnZoneUpdate(newzone, newarea); // also updates area
-            else if (_lastAreaId != newarea)
+            else// if (_lastAreaId != newarea)
                 _OnAreaUpdate(newarea);
 
             if (_wmoAreaUpdateTimer <= diff)
