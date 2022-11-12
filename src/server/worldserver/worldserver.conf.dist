@@ -38,6 +38,7 @@
 #    PACKET SPOOF PROTECTION SETTINGS
 #    MISC ANTI-CHEAT SETTINGS
 #    METRIC SETTINGS
+#    SOLO LFG
 #
 ###################################################################################################
 
@@ -73,7 +74,7 @@ RealmID = 1
 #        Example:     "@prefix@/share/trinitycore"
 #        Default:     "."
 
-DataDir = "."
+DataDir = "./data"
 
 #
 #    LogsDir
@@ -82,7 +83,7 @@ DataDir = "."
 #                     Logs directory must exists, or log file creation will be disabled.
 #        Default:     "" - (Log files will be stored in the current path)
 
-LogsDir = ""
+LogsDir = "logs"
 
 #
 #    LoginDatabaseInfo
@@ -107,9 +108,9 @@ LogsDir = ""
 #    The SSL option will enable TLS when connecting to the specified database. If not provided or
 #    any value other than 'ssl' is set, TLS will not be used.
 
-LoginDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;auth"
-WorldDatabaseInfo     = "127.0.0.1;3306;trinity;trinity;world"
-CharacterDatabaseInfo = "127.0.0.1;3306;trinity;trinity;characters"
+LoginDatabaseInfo     = "127.0.0.1;3306;root;ascent;auth"
+WorldDatabaseInfo     = "127.0.0.1;3306;root;ascent;world"
+CharacterDatabaseInfo = "127.0.0.1;3306;root;ascent;characters"
 
 #
 #    LoginDatabase.WorkerThreads
@@ -272,7 +273,7 @@ PlayerLimit = 0
 #                     3+ - (Enabled, More checks before kick)
 #                     0  - (Disabled)
 
-MaxOverspeedPings = 2
+MaxOverspeedPings = 0
 
 #
 #    GridUnload
@@ -308,7 +309,7 @@ InstanceMapLoadAllGrids = 0
 #                     selection screen is disconnected.
 #        Default:     900000 - (15 minutes)
 
-SocketTimeOutTime = 900000
+SocketTimeOutTime = 15000000
 
 #
 #    SocketTimeOutTimeActive
@@ -898,7 +899,7 @@ RecruitAFriend.MaxDifference = 4
 #                     2  - (Enabled, GMs/Admins)
 #                     3  - (Enabled, Admins)
 
-DisableWaterBreath = 4
+DisableWaterBreath = 0
 
 #
 #    AllFlightPaths
@@ -957,7 +958,7 @@ Instance.IgnoreLevel = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Instance.IgnoreRaid = 0
+Instance.IgnoreRaid = 1
 
 #
 #    Instance.ResetTimeHour
@@ -1019,7 +1020,7 @@ Quests.HighLevelHideDiff = 7
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Quests.IgnoreRaid = 0
+Quests.IgnoreRaid = 1
 
 #
 #    Quests.IgnoreAutoAccept
@@ -1096,7 +1097,7 @@ Guild.BankEventLogRecordsCount = 25
 #        Range:       0-11
 #        Default:     2
 
-MaxPrimaryTradeSkill = 2
+MaxPrimaryTradeSkill = 11
 
 #
 #    MinPetitionSigns
@@ -1104,7 +1105,7 @@ MaxPrimaryTradeSkill = 2
 #        Range:       0-9
 #        Default:     9
 
-MinPetitionSigns = 9
+MinPetitionSigns = 0
 
 #
 #    MaxGroupXPDistance
@@ -1155,7 +1156,7 @@ MinDiscoveredScaledXPRatio = 0
 #        Description: Time (in seconds) mail delivery is delayed when sending items.
 #        Default:     3600 - (1 hour)
 
-MailDeliveryDelay = 3600
+MailDeliveryDelay = 60
 
 #
 #    CleanOldMailTime
@@ -1204,7 +1205,7 @@ ClientCacheVersion = 0
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Event.Announce = 0
+Event.Announce = 1
 
 #
 #    BeepAtStart
@@ -1236,7 +1237,7 @@ Motd = "Welcome to a Trinity Core server."
 #        Default:     0 - (Disabled)
 #                     1 - (Enabled)
 
-Server.LoginInfo = 0
+Server.LoginInfo = 1
 
 #
 #    Command.LookupMaxResults
@@ -1251,7 +1252,7 @@ Command.LookupMaxResults = 0
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-AllowTickets = 1
+AllowTickets = 0
 
 #
 #    DeletedCharacterTicketTrace
@@ -1280,14 +1281,14 @@ DungeonFinder.OptionsMask = 1
 #        Default:     1 - (Enabled, Enforce DBC values)
 #                     0 - (Disabled, Use database values)
 
-DBC.EnforceItemAttributes = 1
+DBC.EnforceItemAttributes = 0
 
 #
 #   AccountInstancesPerHour
 #        Description: Controls the max amount of different instances player can enter within hour.
 #        Default:     5
 
-AccountInstancesPerHour = 5
+AccountInstancesPerHour = 100
 
 #
 #   Account.PasswordChangeSecurity
@@ -1633,7 +1634,7 @@ TalentsInspecting = 1
 #                     radius will be used.
 #        Default:     60
 
-ThreatRadius = 60
+ThreatRadius = 30
 
 #
 #    Rate.Creature.Aggro
@@ -1821,7 +1822,7 @@ MonsterSight = 50.000000
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-Creature.RegenHPCannotReachTargetInRaid = 1
+Creature.RegenHPCannotReachTargetInRaid = 0
 
 #
 ###################################################################################################
@@ -2452,7 +2453,7 @@ Rate.Reputation.RecruitAFriendBonus = 0.1
 #        Description: Movement speed rate.
 #        Default:     1
 
-Rate.MoveSpeed = 1
+Rate.MoveSpeed = 1.14
 
 #
 #    Rate.InstanceResetTime
@@ -2491,10 +2492,10 @@ SkillGain.Weapon    = 1
 #                     25  - (SkillChance.Green)
 #                     0   - (SkillChance.Grey)
 
-SkillChance.Orange = 100
-SkillChance.Yellow = 75
-SkillChance.Green  = 25
-SkillChance.Grey   = 0
+SkillChance.Orange = 50
+SkillChance.Yellow = 25
+SkillChance.Green  = 2
+SkillChance.Grey   = 2
 
 #
 #    SkillChance.MiningSteps
@@ -2520,7 +2521,7 @@ DurabilityLoss.InPvP = 0
 #        Note:        On 3.3.5 client always shows log message "Your items have lost 10% durability"
 #        Default:     10
 
-DurabilityLoss.OnDeath = 10
+DurabilityLoss.OnDeath = 5
 
 #
 #    DurabilityLossChance.Damage
@@ -2563,7 +2564,7 @@ DurabilityLossChance.Block = 0.05
 #                     MaxPlayerLevel+1 - (Disabled)
 #                     -10              - (Enabled, Level 1+ characters have 10 minute duration)
 
-Death.SicknessLevel = 11
+Death.SicknessLevel = 81
 
 #
 #    Death.CorpseReclaimDelay.PvP
@@ -3117,7 +3118,7 @@ CharDelete.KeepDays = 30
 #                       bugs out and doesn't switch the check mark. It has no effect on the actual tracking though).
 #                     * The minimap dots are yellow for both resources.
 
-AllowTrackBothResources = 0
+AllowTrackBothResources = 1
 
 #
 #    PlayerStart.AllReputation
@@ -3396,7 +3397,7 @@ AuctionHouseBot.Update.Interval = 20
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Seller.Enabled = 0
+AuctionHouseBot.Seller.Enabled = 1
 
 #
 #    AuctionHouseBot.Alliance.Items.Amount.Ratio
@@ -3431,7 +3432,7 @@ AuctionHouseBot.MinTime = 1
 #       Description: Maximum time for the new auction in hours
 #       Default:     72 - (Hours)
 
-AuctionHouseBot.MaxTime = 72
+AuctionHouseBot.MaxTime = 2
 
 #
 #    AuctionHouseBot.Class.CLASS.Allow.Zero = 0
@@ -3476,7 +3477,7 @@ AuctionHouseBot.Items.Loot = 1
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Items.Misc = 0
+AuctionHouseBot.Items.Misc = 1
 
 #
 #    AuctionHouseBot.Bind.*
@@ -3517,7 +3518,7 @@ AuctionHouseBot.ItemsPerCycle.Boost = 1000
 #                    Usually this value is used always when auction table is already initialised.
 #       Default:     20
 
-AuctionHouseBot.ItemsPerCycle.Normal = 20
+AuctionHouseBot.ItemsPerCycle.Normal = 50
 
 #
 #    AuctionHouseBot.BuyPrice.Seller
@@ -3533,8 +3534,8 @@ AuctionHouseBot.BuyPrice.Seller = 0
 #       Default:     0.6 - (Min)
 #                    0.9 - (Max)
 
-AuctionHouseBot.BidPrice.Min = 0.6
-AuctionHouseBot.BidPrice.Max = 0.9
+AuctionHouseBot.BidPrice.Min = 0.60
+AuctionHouseBot.BidPrice.Max = 0.99
 
 #
 #    AuctionHouseBot.Alliance.Price.Ratio
@@ -3597,7 +3598,7 @@ AuctionHouseBot.Class.Glyph.Price.Ratio = 100
 #       Default:     0 - (Disabled)
 
 AuctionHouseBot.Items.ItemLevel.Min = 0
-AuctionHouseBot.Items.ItemLevel.Max = 0
+AuctionHouseBot.Items.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.Items.ReqLevel.*
@@ -3605,7 +3606,7 @@ AuctionHouseBot.Items.ItemLevel.Max = 0
 #       Default:     0 - (Disabled)
 
 AuctionHouseBot.Items.ReqLevel.Min = 0
-AuctionHouseBot.Items.ReqLevel.Max = 0
+AuctionHouseBot.Items.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Items.ReqSkill.*
@@ -3614,7 +3615,7 @@ AuctionHouseBot.Items.ReqLevel.Max = 0
 #                    1 - (Enabled)
 
 AuctionHouseBot.Items.ReqSkill.Min = 0
-AuctionHouseBot.Items.ReqSkill.Max = 0
+AuctionHouseBot.Items.ReqSkill.Max = 450
 
 #
 #    AuctionHouseBot.Items.Amount.*
@@ -3681,7 +3682,7 @@ AuctionHouseBot.Class.Glyph = 3
 #       Default:     0
 
 AuctionHouseBot.Class.Misc.Mount.ReqLevel.Min = 0
-AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 0
+AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.Misc.Mount.ReqSkill.*
@@ -3689,7 +3690,7 @@ AuctionHouseBot.Class.Misc.Mount.ReqLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Misc.Mount.ReqSkill.Min = 0
-AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 0
+AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 450
 
 #
 #    AuctionHouseBot.Class.Glyph.ReqLevel.*
@@ -3697,7 +3698,7 @@ AuctionHouseBot.Class.Misc.Mount.ReqSkill.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Glyph.ReqLevel.Min = 0
-AuctionHouseBot.Class.Glyph.ReqLevel.Max = 0
+AuctionHouseBot.Class.Glyph.ReqLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.Glyph.ItemLevel.*
@@ -3705,7 +3706,7 @@ AuctionHouseBot.Class.Glyph.ReqLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Glyph.ItemLevel.Min = 0
-AuctionHouseBot.Class.Glyph.ItemLevel.Max = 0
+AuctionHouseBot.Class.Glyph.ItemLevel.Max = 80
 
 #
 #    AuctionHouseBot.Class.TradeGood.ItemLevel.*
@@ -3713,7 +3714,7 @@ AuctionHouseBot.Class.Glyph.ItemLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.TradeGood.ItemLevel.Min = 0
-AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 0
+AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.Class.Container.ItemLevel.*
@@ -3721,7 +3722,7 @@ AuctionHouseBot.Class.TradeGood.ItemLevel.Max = 0
 #       Default:     0
 
 AuctionHouseBot.Class.Container.ItemLevel.Min = 0
-AuctionHouseBot.Class.Container.ItemLevel.Max = 0
+AuctionHouseBot.Class.Container.ItemLevel.Max = 300
 
 #
 #    AuctionHouseBot.forceIncludeItems
@@ -3729,7 +3730,7 @@ AuctionHouseBot.Class.Container.ItemLevel.Max = 0
 #                    List of ids with delimiter ','
 #       Default:     ""
 
-AuctionHouseBot.forceIncludeItems = ""
+AuctionHouseBot.forceIncludeItems = "4389,4382,4371,4357,4364,4361,4363,4404,2770,2771,2775,2318,2319,4234,4304,2589,2996,2592,2997,4306,4305,4338,10940,10938,39774,43124,43122,43120,43118,43116,39469,37101,8845,2447,765,785,2453,3355,2450,3356,3357,3358,8846,13464,13465,13467,13463,14256"
 
 #
 #    AuctionHouseBot.forceExcludeItems
@@ -3792,7 +3793,7 @@ AuctionHouseBot.Class.RandomStackRatio.Glyph = 0
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Buyer.Enabled = 0
+AuctionHouseBot.Buyer.Enabled = 1
 
 #
 #    AuctionHouseBot.Buyer.FACTION.Enabled
@@ -3800,9 +3801,9 @@ AuctionHouseBot.Buyer.Enabled = 0
 #       Default:     0 - (Disabled)
 #                    1 - (Enabled)
 
-AuctionHouseBot.Buyer.Alliance.Enabled = 0
-AuctionHouseBot.Buyer.Horde.Enabled = 0
-AuctionHouseBot.Buyer.Neutral.Enabled = 0
+AuctionHouseBot.Buyer.Alliance.Enabled = 1
+AuctionHouseBot.Buyer.Horde.Enabled = 1
+AuctionHouseBot.Buyer.Neutral.Enabled = 1
 
 #    AuctionHouseBot.Buyer.ChanceFactor
 #       Description: k value in the formula used for the chance to buy an item "100^(1 + (1 - (AuctionBid / ItemPrice)) / k)"
@@ -3857,7 +3858,34 @@ AuctionHouseBot.Buyer.ChanceMultiplier.Yellow = 100
 #                    The smaller this value is, the more chances you give for an item to be bought by AHBot.
 #       Default:     20 (20min.)
 
-AuctionHouseBot.Buyer.Recheck.Interval = 20
+AuctionHouseBot.Buyer.Recheck.Interval = 5
+
+#
+###################################################################################################
+
+###################################################################################################
+#  ELUNA SETTINGS
+#
+#   Eluna.Enabled
+#       Description: Enable or disable Eluna LuaEngine
+#       Default:    true  - (enabled)
+#                   false - (disabled)
+#
+#   Eluna.TraceBack
+#       Description: Sets whether to use debug.traceback function on a lua error or not.
+#                    Notice that you can redefine the function.
+#       Default:    false - (use default error output)
+#                   true  - (use debug.traceback function)
+#
+#   Eluna.ScriptPath
+#       Description: Sets the location of the script folder to load scripts from
+#                    The path can be relative or absolute.
+#       Default:    "lua_scripts"
+#
+
+Eluna.Enabled = true
+Eluna.TraceBack = false
+Eluna.ScriptPath = "lua_scripts"
 
 #
 ###################################################################################################
@@ -3933,6 +3961,7 @@ Appender.Console=1,3,0
 Appender.Server=2,2,0,Server.log,w
 Appender.GM=2,2,1,GM.log
 Appender.DBErrors=2,2,0,DBErrors.log
+Appender.Eluna=2,5,3,Eluna.log,a
 
 #  Logger config values: Given a logger "name"
 #    Logger.name
@@ -3959,6 +3988,7 @@ Logger.scripts.hotswap=3,Console Server
 Logger.sql.sql=5,Console DBErrors
 Logger.sql.updates=3,Console Server
 Logger.mmaps=3,Server
+Logger.eluna=1,Console Eluna
 
 #Logger.achievement=3,Console Server
 #Logger.addon=3,Console Server
@@ -4113,7 +4143,7 @@ Metric.Enable = 0
 #        Default:     10 seconds
 #
 
-Metric.Interval = 1
+Metric.Interval = 10
 
 #
 #    Metric.ConnectionInfo
@@ -4164,7 +4194,7 @@ NpcBot.Enable = 1
 #        Default:     1
 #        Max:         39
 
-NpcBot.MaxBots = 1
+NpcBot.MaxBots = 9
 
 #
 #    NpcBot.MaxBotsPerClass
@@ -4178,7 +4208,7 @@ NpcBot.MaxBotsPerClass = 0
 #        Description: Make botgiver only offer bots of player faction (normal classes).
 #        Default:     0 - disable
 
-NpcBot.Botgiver.FilterRaces = 0
+NpcBot.Botgiver.FilterRaces = 1
 
 #
 #    NpcBot.BaseFollowDistance
@@ -4197,7 +4227,7 @@ NpcBot.BaseFollowDistance = 30
 #        Note:        Maximum overall xp reduction is 90%.
 #        Default:     0
 
-NpcBot.XpReduction = 0
+NpcBot.XpReduction = 20
 
 #
 #    NpcBot.HealTargetIconMask
@@ -4224,12 +4254,12 @@ NpcBot.XpReduction = 0
 #                     64 - Cross
 #                     128 - Skull
 
-NpcBot.HealTargetIconMask = 0
-NpcBot.TankTargetIconMask = 0
-NpcBot.OffTankTargetIconMask = 0
-NpcBot.DPSTargetIconMask = 0
-NpcBot.RangedDPSTargetIconMask = 0
-NpcBot.NoDPSTargetIconMask = 0
+NpcBot.HealTargetIconMask = 1
+NpcBot.TankTargetIconMask = 128
+NpcBot.OffTankTargetIconMask = 4
+NpcBot.DPSTargetIconMask = 2
+NpcBot.RangedDPSTargetIconMask = 8
+NpcBot.NoDPSTargetIconMask = 64
 
 #
 #    NpcBot.Mult.Damage.Physical
@@ -4241,9 +4271,9 @@ NpcBot.NoDPSTargetIconMask = 0
 #        Minimum:     0.1
 #        Maximum:    10.0
 
-NpcBot.Mult.Damage.Physical = 1.0
-NpcBot.Mult.Damage.Spell    = 1.0
-NpcBot.Mult.Healing         = 1.0
+NpcBot.Mult.Damage.Physical = 0.4
+NpcBot.Mult.Damage.Spell    = 0.4
+NpcBot.Mult.Healing         = 1.5
 NpcBot.Mult.HP              = 1.0
 
 #
@@ -4260,9 +4290,9 @@ NpcBot.Mult.HP              = 1.0
 #                     1 - (NpcBot.Enable.DungeonFinder)
 
 NpcBot.Enable.Dungeon       = 1
-NpcBot.Enable.Raid          = 0
-NpcBot.Enable.BG            = 0
-NpcBot.Enable.Arena         = 0
+NpcBot.Enable.Raid          = 1
+NpcBot.Enable.BG            = 1
+NpcBot.Enable.Arena         = 1
 NpcBot.Enable.DungeonFinder = 1
 
 #
@@ -4281,7 +4311,7 @@ NpcBot.Limit.Raid    = 1
 #        Note:        This value is for level 80 characters, for lower levels cost is reduced.
 #        Default:     1000000 (100 gold)
 
-NpcBot.Cost = 1000000
+NpcBot.Cost = 10000
 
 #
 #    NpcBot.UpdateDelay.Base
@@ -4303,8 +4333,8 @@ NpcBot.UpdateDelay.Base = 0
 #        Default:     0 - (No delay)
 #                     1000 - (1 second)
 
-NpcBot.EngageDelay.DPS  = 0
-NpcBot.EngageDelay.Heal = 0
+NpcBot.EngageDelay.DPS  = 3000
+NpcBot.EngageDelay.Heal = 3000
 
 #
 #    NpcBot.PvP
@@ -4357,7 +4387,7 @@ NpcBot.EquipmentDisplay.ShowHelm  = 1
 #        Default:     0 - (Disable)
 #                     1 - (Enable)
 
-NpcBot.Gossip.ShowEquipmentListItems = 0
+NpcBot.Gossip.ShowEquipmentListItems = 1
 
 #
 #    NpcBot.NewClasses.<Class>.Enable
@@ -4430,7 +4460,405 @@ NpcBot.OwnershipExpireTime = 0
 #        Default:     1 - (Enabled)
 #                     0 - (Disabled)
 
-NpcBot.EnrageOnDismiss = 1
+NpcBot.EnrageOnDismiss = 0
 
 #
+###################################################################################################
+
+###################################################################################################
+# AUTOBALANCE OPTIONS
+#
+#     AutoBalance.enable
+#        Enable/Disable the autobalance system
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.enable = 1
+
+#
+#     AutoBalance.Announce.enable
+#        Announce the module on login
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.Announce.enable = 1
+
+#
+#     AutoBalance.InflectionPoint series
+#        Adjust value of Hyperbolic Tangent function where
+#        the curve of scaling must change. A lower value means higher difficulty.
+#        InflectionPoint & InflectionPointHeroic are the fallback values for 5-man dungeons
+#        InflectionPointRaid10M & InflectionPointRaid10MHeroic are default for 10 man raids
+#        InflectionPointRaid25M & InflectionPointRaid25MHeroic are default for 25 man raids
+#        InflectionPointRaid & InflectionPointRaidHeroic are default for other raids
+#           (40-man, 20-man, 15-man, or custom size)
+#        The inflection points fallback to the most specific number
+#
+#        Example: with 0.5 in InflectionPointRaid, a creature of raid (40) will have half of
+#           its life with 20 players in with 0.8, the same creature will have
+#           half of its life with 12 players in
+#
+#        Default:     0.5
+
+AutoBalance.InflectionPoint = 0.5
+AutoBalance.InflectionPointHeroic = 0.5
+
+AutoBalance.InflectionPointRaid10M = 0.5
+AutoBalance.InflectionPointRaid10MHeroic = 0.5
+
+AutoBalance.InflectionPointRaid25M = 0.5
+AutoBalance.InflectionPointRaid25MHeroic = 0.5
+
+AutoBalance.InflectionPointRaid = 0.5
+AutoBalance.InflectionPointRaidHeroic = 0.5
+
+#
+#     AutoBalance.BossInflectionMult
+#        Multiplies the inflection point of bosses, only applies to creatures considered
+#           dungeon bosses (from dungeons or raids).
+#        Example: If AutoBalance.BossInflectionMult = 0.4 and AutoBalance.InflectionPoint=0.5,
+#           the bosses inflection point will be 0.4*0.9 = 0.36 in a normal
+#        Default:     1.0
+
+AutoBalance.BossInflectionMult = 1.0
+
+#
+#     AutoBalance.levelScaling
+#        Check the max level of players in map and scale creature based on it.
+#        This triggers depending on the two options below AutoBalance.levelHigherOffset and
+#           AutoBalance.levelLowerOffset
+#        0 = Disabled
+#        1 = Enabled (only in dungeons/raids)
+#        Default:     1
+
+AutoBalance.levelScaling = 1
+
+#
+#     AutoBalance.levelHigherOffset
+#     AutoBalance.levelLowerOffset
+#        Level Offsets between creatures will not be scaled by level.
+#        You can even use it to disable scaling from lower to higher levelScaling
+#        setting levelLowerOffset to 80 (max wotlk level) for example.
+#        default: 3 (higher), 0 (lower)
+
+AutoBalance.levelHigherOffset = 3
+AutoBalance.levelLowerOffset  = 0
+
+#
+#     AutoBalance.levelUseDbValuesWhenExists
+#        When enabled with levelScaling, the creature will use its default database values
+#        instead of level scaling formula when player/party level has correspondance with
+#        creature_template minlevel/maxlevel.
+#
+#        Default:     0 (1 = ON, 0 = OFF)
+
+AutoBalance.levelUseDbValuesWhenExists = 0
+
+#
+#     AutoBalance.LevelEndGameBoost
+#        End game creatures have an exponential (not linear) regression
+#        that is not correctly handled by db values. Keep this enabled
+#        to have stats as near possible to the official ones.
+#
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.LevelEndGameBoost = 1
+
+#
+#     AutoBalance.DungeonScaleDownXP
+#        Decrease individual player's amount of XP gained during a dungeon to match the
+#        amount of XP gained during a full group run. Example: In a 5-man group, you
+#        earn 1/5 of the total XP per kill, but if you solo the dungeon with
+#        AutoBalance.DungeonScaleDownXP = 0, you will earn 5/5 of the total XP.
+#        With the option enabled, you will earn 1/5.
+#        Default:     0 (1 = ON, 0 = OFF)
+
+AutoBalance.DungeonScaleDownXP = 1
+
+#
+#     AutoBalance.DungeonsOnly
+#        Only apply scaling changes to dungeons and raids
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.DungeonsOnly = 1
+
+#
+#     AutoBalance.PlayerChangeNotify
+#        Set Auto Notifications to all players in Instance that player count has changed.
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.PlayerChangeNotify = 1
+
+#
+#     AutoBalance.CountNpcBots
+#        NPCBots mod integration. Makes bots count as players for player count calculation
+#        Default:     1 (1 = ON, 0 = OFF)
+
+AutoBalance.CountNpcBots = 1
+
+#
+#     AutoBalance.MinHPModifier
+#        Minimum Modifier setting for Health Modification
+#        Default:     0.01
+
+AutoBalance.MinHPModifier = 0.01
+
+#
+#     AutoBalance.MinManaModifier
+#        Minimum Modifier setting for Mana Modification
+#        Default:     0.01
+
+AutoBalance.MinManaModifier = 0.01
+
+#
+#     AutoBalance.MinDamageModifier
+#        Minimum Modifier setting for Damage Modification
+#        Default:     0.01
+
+AutoBalance.MinDamageModifier = 0.01
+
+#
+#     AutoBalance.rate.*
+#        You can tune all rates increasing/decreasing difficulty in a linear way
+#        Note that global rate will increase all other rates. For example:
+#        global = 2.0 , damage = 1.5  -> it means that damage will be 3.0
+#        Default:     1.0
+
+AutoBalance.rate.global = 1.0
+AutoBalance.rate.health = 1.0
+AutoBalance.rate.mana   = 1.0
+AutoBalance.rate.armor  = 1.0
+AutoBalance.rate.damage = 1.0
+
+#
+#     AutoBalance.playerCountDifficultyOffset
+#        Offset of players inside an instance
+#        Default:     0
+
+AutoBalance.playerCountDifficultyOffset = 0
+
+#
+#     AutoBalance.ForcedIDXX
+#        Sets MobIDs for the group they belong to.
+#        All 5 Man Mobs should go in .AutoBalance.5.Name
+#        All 10 Man Mobs should go in .AutoBalance.10.Name etc.
+
+AutoBalance.ForcedID40 = "11583,16441,30057,13020,15589,14435,18192,14889,14888,14887,14890,15302,15818,15742,15741,15740,18338"
+AutoBalance.ForcedID25 = "22997,21966,21965,21964,21806,21215,21845,19728,12397,17711,18256,18192,"
+AutoBalance.ForcedID20 = ""
+AutoBalance.ForcedID10 = "15689,15550,16152,17521,17225,16028,29324,31099"
+AutoBalance.ForcedID5  = "8317,15203,15204,15205,15305,6109,26801,30508,26799,30495,26803,30497,27859,27249"
+AutoBalance.ForcedID2  = ""
+
+#
+#     AutoBalance.DisabledID
+#        Disable scaling on specific creatures
+#
+
+AutoBalance.DisabledID = ""
+
+#
+###################################################################################################
+
+###################################################################################################
+# SOLO LFG
+#
+#    SoloLFG.Enable
+#        Description: Enable the module.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+SoloLFG.Enable = 1
+
+#    SoloLFG.Announce
+#        Description: Announce the module.
+#        Default:     1  - (Enabled)
+#                     0  - (Disabled)
+
+SoloLFG.Announce = 1
+
+#
+###################################################################################################
+
+###################################################################################################
+#
+# Custom.SpeedGame
+# Set it to a number upper than 1 to speed up realm timer
+# Default : 1 (Real Time)
+# Example : 60 to force 1scde (real time) = 1 minute (realm timer)
+#
+
+Custom.SpeedGame = 15
+
+#
+###################################################################################################
+
+###################################################################################################
+#Skip Death Knight Starting Area#
+#################################
+#
+#    Skip Death Knight Starting Area
+#        Enable this if you want to skip the Deathknight starting area
+#        Start with level 58 DK with Runeforging.
+#
+#    Skip.Deathknight.Starter.Announce.enable
+#         Description: Announces Module when player logs in.
+#         Default:    0 - (Disabled)
+#                     1 - (Enabled)
+
+Skip.Deathknight.Starter.Announce.enable = 1
+
+#    Skip.DeathKnight.Starter.Enable
+#         Active Module for all new accounts regardless of account level.
+#         Default:    0 - (Disabled)
+#                     1 - (Enabled)
+
+Skip.Deathknight.Starter.Enable = 0
+
+#    GM.Skip.Deathknight.Starter.Enable
+#         Active Module for all new accounts of a GM account level ONLY.
+#         Ensure you have Skip.Deathknight.Starter.Enable set to 0 if using this conf.
+#         Default:    0 - (Disabled)
+#                     1 - (Enabled)
+
+GM.Skip.Deathknight.Starter.Enable = 0
+
+#    Skip.Deathknight.Start.Level
+#         Adjusted Death Knight Start Level if module is used.
+#         Default:    58 - (Default)
+#
+
+Skip.Deathknight.Start.Level = 58
+
+#
+###################################################################################################
+
+###################################################################################################
+#     Custom.AttackSpeedForPlayer
+#     Custom.AttackSpeedForMobs
+#         Set it to a number upper than 1 to speed up the attack of the player or the mobs
+#     Default : 1.0 (Normal speed)
+#     Example : 2.0 (attack speed is 200% faster)
+#     Example : 0.5 (attack speed is 50% slower)
+
+Custom.AttackSpeedForPlayer = 1.0
+Custom.AttackSpeedForMobs = 1.0
+
+#
+###################################################################################################################
+
+###################################################################################################
+#Limit potion use in combat to one.
+# true = can only use one potion while in combat
+# false = can use potions multiple times while in combat
+Potions.Limit = false
+###################################################################################################
+
+########################ICC GUNSHIP HEALTH##########################################################
+# Gunship HP 0.2 = 20% 0.5 = 50% 0.75 = 75%
+# Default: 1 (100%)
+GunshipHP = 0.2
+#################################################################################################
+
+###################################################################################################
+#Taxi speed
+#Speed of taxi flight 1 is normal, 2 is x2, 3 is x3, etc, etc
+# to make flights slower 0.5 is 50% speed of normal and 0.75 is 75% of normal. 
+# 500 seems to double flight speed so I suggest using 500+ if your goal is to make flight fast
+Custom.SpeedTaxi = 500
+###################################################################################################
+
+####################################################################################################
+#HUNTER AMMO
+# Prevent Hunter's ranged weapons from taking ammo when used 
+# 1 -(will use ammo) 0 - (disables ammo usage)
+Ammo.TakeAmmo = 0
+###################################################################################################
+
+###################################################################################################
+###GainHonorOnGuardKill##
+#########################
+# Custom.GainHonorOnGuardKill
+# Set it to 1 to gain honor when you kill a guard.
+# Note that not all city guards will give you honor. It seems only capital and big city guards are flagged
+# as so in the database.
+# Default : 0 (No honor when you kill a guard)
+#
+Custom.GainHonorOnGuardKill = 1
+#
+# Custom.GainHonorOnEliteKill
+# Set it to 1 to gain honor when you kill an elite mob (this does not apply on rare mob, unless he is also elite).
+# Default : 0 (No honor when you kill an elite mob)
+#
+Custom.GainHonorOnEliteKill = 1
+#
+# Custom.GainHonorOnBossKill
+# Set it to 1 to gain honor when you kill a boss.
+# Default : 0 (No honor when you kill a boss)
+#
+Custom.GainHonorOnBossKill = 1
+#
+##########BONUS###########################
+# Custom.GainHonorOnGuardKill.Bonus
+# Give a bonus amount of honor.
+# Set it to 1000 and an extra 1000 honor would be added to whatever amount of honor is given.
+# Default : 0 (No bonus honor will be given )
+#
+Custom.GainHonorOnGuardKill.Bonus = 0
+#
+# Custom.GainHonorOnEliteKill.Bonus
+# Give a bonus amount of honor.
+# Set it to 1000 and an extra 1000 honor would be added to whatever amount of honor is given.
+# Default : 0 (No bonus honor will be given )
+#
+Custom.GainHonorOnEliteKill.Bonus = 0
+#
+# Custom.GainHonorOnBossKill.Bonus
+# Give a bonus amount of honor.
+# Set it to 1000 and an extra 1000 honor would be added to whatever amount of honor is given.
+# Default : 0 (No bonus honor will be given )
+#
+Custom.GainHonorOnBossKill.Bonus = 0
+#
+##########AREANA_POINTS###########################
+# Custom.GainHonorOnGuardKill.AreanPoints
+# Also give Arena Points on Guard kills.
+# Set it to 1 to also receive AP.
+# Default : 0 (No AP will be given )
+#
+Custom.GainHonorOnGuardKill.AreanPoints = 1
+#
+# Custom.GainHonorOnEliteKill.AreanPoints
+# Also give Arena Points on Elite kills.
+# Set it to 1 to also receive AP.
+# Default : 0 (No AP will be given )
+#
+Custom.GainHonorOnEliteKill.AreanPoints = 1
+#
+# Custom.GainHonorOnBossKill.AreanPoints
+# Also give Arena Points on Boss kills.
+# Set it to 1 to also receive AP.
+# Default : 0 (No AP will be given )
+#
+Custom.GainHonorOnBossKill.AreanPoints = 1
+#
+##########GOLD###########################
+# Custom.GainHonorOnGuardKill.Gold
+# Also give gold on Guard kills.
+# Default : 0 (No gold will be given )
+#
+# Min Player level Required.
+Custom.GainGoldOnKill.MinLevel = 80
+#
+Custom.GainHonorOnGuardKill.Gold = 0
+#
+# Custom.GainHonorOnEliteKill.Gold
+# Also give gold on Elite kills.
+# Default : 0 (No gold will be given )
+#
+Custom.GainHonorOnEliteKill.Gold = 0
+#
+# Custom.GainHonorOnBossKill.Gold
+# Also give gold on Boss kills.
+# Default : 0 (No gold will be given )
+#
+Custom.GainHonorOnBossKill.Gold = 0
 ###################################################################################################

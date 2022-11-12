@@ -26,6 +26,7 @@
 #include "ArenaTeamMgr.h"
 #include "AuctionHouseBot.h"
 #include "AuctionHouseMgr.h"
+#include "AutoBalance.h"
 #include "BattlefieldMgr.h"
 #include "BattlegroundMgr.h"
 #include "CalendarMgr.h"
@@ -86,6 +87,9 @@
 #include "WardenCheckMgr.h"
 #include "WaypointManager.h"
 #include "WeatherMgr.h"
+#ifdef ELUNA
+#include "LuaEngine.h"
+#endif
 #include "WhoListStorage.h"
 #include "WorldSession.h"
 
@@ -651,6 +655,22 @@ void World::LoadConfigSettings(bool reload)
         TC_LOG_ERROR("server.loading", "Rate.Quest.Money.Max.Level.Reward (%f) must be >=0. Using 0 instead.", rate_values[RATE_MONEY_MAX_LEVEL_QUEST]);
         rate_values[RATE_MONEY_MAX_LEVEL_QUEST] = 0.0f;
     }
+	
+	/// -Read guard elite honor patch from the config file
+	m_bool_configs[CONFIG_GAIN_HONOR_GUARD] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnGuardKill", false);
+    m_bool_configs[CONFIG_GAIN_HONOR_ELITE] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnEliteKill", false);
+	 m_bool_configs[CONFIG_GAIN_HONOR_BOSS] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnBossKill", false);
+	m_bool_configs[CONFIG_GAIN_HONOR_GUARD_AP] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnGuardKill.AreanPoints", false);
+    m_bool_configs[CONFIG_GAIN_HONOR_ELITE_AP] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnEliteKill.AreanPoints", false);
+	m_bool_configs[CONFIG_GAIN_HONOR_BOSS_AP] = sConfigMgr->GetBoolDefault("Custom.GainHonorOnBossKill.AreanPoints", false);
+	m_int_configs[CONFIG_GAIN_HONOR_GUARD_BONUS] = sConfigMgr->GetIntDefault("Custom.GainHonorOnGuardKill.Bonus", 0);
+	m_int_configs[CONFIG_GAIN_HONOR_ELITE_BONUS] = sConfigMgr->GetIntDefault("Custom.GainHonorOnEliteKill.Bonus", 0);
+	m_int_configs[CONFIG_GAIN_HONOR_BOSS_BONUS] = sConfigMgr->GetIntDefault("Custom.GainHonorOnBossKill.Bonus", 0);
+	m_int_configs[CONFIG_GAIN_HONOR_GUARD_GOLD] = sConfigMgr->GetIntDefault("Custom.GainHonorOnGuardKill.Gold", 0);
+	m_int_configs[CONFIG_GAIN_GOLD_MINLEVEL] = sConfigMgr->GetIntDefault("Custom.GainGoldOnKill.MinLevel", 80);
+	m_int_configs[CONFIG_GAIN_HONOR_ELITE_GOLD] = sConfigMgr->GetIntDefault("Custom.GainHonorOnEliteKill.Gold", 0);
+	m_int_configs[CONFIG_GAIN_HONOR_BOSS_GOLD] = sConfigMgr->GetIntDefault("Custom.GainHonorOnBossKill.Gold", 0);
+	
     ///- Read other configuration items from the config file
 
     m_bool_configs[CONFIG_DURABILITY_LOSS_IN_PVP] = sConfigMgr->GetBoolDefault("DurabilityLoss.InPvP", false);
@@ -1301,6 +1321,13 @@ void World::LoadConfigSettings(bool reload)
     m_visibility_notify_periodInInstances  = sConfigMgr->GetIntDefault("Visibility.Notify.Period.InInstances",  DEFAULT_VISIBILITY_NOTIFY_PERIOD);
     m_visibility_notify_periodInBG         = sConfigMgr->GetIntDefault("Visibility.Notify.Period.InBG",         DEFAULT_VISIBILITY_NOTIFY_PERIOD);
     m_visibility_notify_periodInArenas     = sConfigMgr->GetIntDefault("Visibility.Notify.Period.InArenas",     DEFAULT_VISIBILITY_NOTIFY_PERIOD);
+	
+	//Taxi Speed
+	m_float_configs[CONFIG_SPEED_TAXI] = sConfigMgr->GetFloatDefault("Custom.SpeedTaxi", 1.0f);
+	
+	m_float_configs[CONFIG_SPEED_GAME] = sConfigMgr->GetFloatDefault("Custom.SpeedGame", 1.0f);
+	m_float_configs[CONFIG_ATTACKSPEED_PLAYER] = sConfigMgr->GetFloatDefault("Custom.AttackSpeedForPlayer", 1.0f);
+    m_float_configs[CONFIG_ATTACKSPEED_ALL] = sConfigMgr->GetFloatDefault("Custom.AttackSpeedForMobs", 1.0f);
 
     ///- Load the CharDelete related config options
     m_int_configs[CONFIG_CHARDELETE_METHOD] = sConfigMgr->GetIntDefault("CharDelete.Method", 0);
@@ -1545,6 +1572,9 @@ void World::LoadConfigSettings(bool reload)
     // Specifies if IP addresses can be logged to the database
     m_bool_configs[CONFIG_ALLOW_LOGGING_IP_ADDRESSES_IN_DATABASE] = sConfigMgr->GetBoolDefault("AllowLoggingIPAddressesInDatabase", true, true);
 
+	//allow use of Potions more than once in combat.
+	m_bool_configs[CONFIG_POTIONS_LIMIT] = sConfigMgr->GetBoolDefault("Potions.Limit", true);
+	
     // call ScriptMgr if we're reloading the configuration
     if (reload)
         sScriptMgr->OnConfigLoad(reload);
@@ -1593,6 +1623,12 @@ void World::SetInitialWorldSettings()
         TC_LOG_FATAL("server.loading", "Unable to load critical files - server shutting down !!!");
         exit(1);
     }
+
+#ifdef ELUNA
+    ///- Initialize Lua Engine
+    TC_LOG_INFO("server.loading", "Initialize Eluna Lua Engine...");
+    Eluna::Initialize();
+#endif
 
     ///- Initialize pool manager
     sPoolMgr->Initialize();
@@ -2080,6 +2116,10 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Initializing Scripts...");
     sScriptMgr->Initialize();
+
+    ///- Initialize AutoBalance
+    InitAutoBalanceSystem();
+
     sScriptMgr->OnConfigLoad(false);                                // must be done after the ScriptMgr has been properly initialized
 
     TC_LOG_INFO("server.loading", "Validating spell scripts...");
@@ -2211,6 +2251,13 @@ void World::SetInitialWorldSettings()
 
     TC_LOG_INFO("server.loading", "Calculate guild limitation(s) reset time...");
     InitGuildResetTime();
+
+#ifdef ELUNA
+    ///- Run eluna scripts.
+    // in multithread foreach: run scripts
+    sEluna->RunScripts();
+    sEluna->OnConfigLoad(false); // Must be done after Eluna is initialized and scripts have run.
+#endif
 
     // Preload all cells, if required for the base maps
     if (sWorld->getBoolConfig(CONFIG_BASEMAP_LOAD_GRIDS))

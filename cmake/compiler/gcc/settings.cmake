@@ -35,6 +35,7 @@ if(WITH_WARNINGS)
       -Winit-self
       -Winvalid-pch
       -Wfatal-errors
+      -Wno-unused-variable
       -Woverloaded-virtual)
 
   message(STATUS "GCC: All warnings enabled")
