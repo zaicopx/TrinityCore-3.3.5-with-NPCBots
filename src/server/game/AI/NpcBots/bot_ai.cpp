@@ -220,6 +220,7 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
 
     teleHomeEvent = nullptr;
     teleFinishEvent = nullptr;
+    awaitStateRemEvent = nullptr;
 
     _lastZoneId = 0;
     _lastAreaId = 0;
@@ -527,6 +528,7 @@ void bot_ai::ResetBotAI(uint8 resetType)
     //ASSERT(me->IsInWorld());
 
     m_botCommandState = BOT_COMMAND_FOLLOW;
+    _botAwaitState = BOT_AWAIT_NONE;
 
     master = reinterpret_cast<Player*>(me);
     if (resetType & BOTAI_RESET_MASK_ABANDON_MASTER)
@@ -1043,6 +1045,38 @@ bool bot_ai::CanBotMoveVehicle() const
 
     return false;
 }
+
+void bot_ai::SetBotAwaitState(uint8 state)
+{
+    if (HasBotAwaitState(state))
+        return;
+
+    if (!me->IsAlive())
+        return;
+
+    _botAwaitState |= state;
+
+    AbortAwaitStateRemoval();
+    awaitStateRemEvent = new AwaitStateRemovalEvent(this, state);
+    Events.AddEvent(awaitStateRemEvent, Events.CalculateTime(30s));
+}
+
+void bot_ai::EventRemoveBotAwaitState(uint8 state)
+{
+    AbortAwaitStateRemoval();
+    RemoveBotAwaitState(state);
+}
+
+void bot_ai::AbortAwaitStateRemoval()
+{
+    if (awaitStateRemEvent)
+    {
+        if (awaitStateRemEvent->IsActive())
+            awaitStateRemEvent->ScheduleAbort();
+        awaitStateRemEvent = nullptr;
+    }
+}
+
 void bot_ai::SetBotCommandState(uint8 st, bool force, Position* newpos)
 {
     if (!me->IsAlive())
@@ -13782,7 +13816,9 @@ void bot_ai::JustEnteredCombat(Unit* u)
 void bot_ai::JustDied(Unit*)
 {
     AbortTeleport();
+    AbortAwaitStateRemoval();
     KillEvents(false);
+    CancelAllOrders();
 
     if (IsTempBot())
     {
@@ -13806,6 +13842,7 @@ void bot_ai::JustDied(Unit*)
     _atHome = false;
     _evadeMode = false;
     spawned = false;
+    _botAwaitState = BOT_AWAIT_NONE;
 
     ++_deathsCount;
 }
@@ -13921,6 +13958,26 @@ void bot_ai::OnBotOwnerSpellGo(Spell const* spell, bool ok)
 
     //TC_LOG_ERROR("entities.player", "OnBotOwnerSpellGo(): %u by %s", spellInfo->Id, master->GetName().c_str());
 
+    if (spell->m_targets.HasDst() && HasBotAwaitState(BOT_AWAIT_SEND) && (me->GetTransport() == master->GetTransport()))
+    {
+        EventRemoveBotAwaitState(BOT_AWAIT_SEND);
+
+        Position const* spell_dest = spell->m_targets.GetDstPos();
+        if (me->GetExactDist(spell_dest) <= 70.f)
+        {
+            SetBotCommandState(BOT_COMMAND_STAY);
+            BotMovement(BOT_MOVE_POINT, spell_dest, nullptr, false);
+            if (botPet)
+            {
+                botPet->GetBotPetAI()->SetBotCommandState(BOT_COMMAND_STAY);
+                botPet->GetMotionMaster()->MovePoint(me->GetMapId(), *spell_dest, false);
+            }
+            BotWhisper("Moving to position!");
+        }
+        else
+            BotWhisper("Position is too far away!");
+    }
+
     if (master->GetVehicle() && me->GetVehicle() && !master->HasSpell(spellInfo->Id) && !spell->m_targets.GetGOTargetGUID())
     {
         //if (((spellInfo->AttributesCu & SPELL_ATTR0_CU_DIRECT_DAMAGE) || spellInfo->HasAura(SPELL_AURA_PERIODIC_DAMAGE)) &&
@@ -13928,7 +13985,6 @@ void bot_ai::OnBotOwnerSpellGo(Spell const* spell, bool ok)
         //    spell->m_targets.GetUnitTargetGUID() != master->GetVehicleBase()->GetGUID())
         //{
         //    //master->GetVehicleBase()->SetTarget(spell->m_targets.GetUnitTargetGUID());
-
         //    me->GetVehicleBase()->SetTarget(spell->m_targets.GetUnitTargetGUID());
         //    SetBotCommandState(BOT_COMMAND_ATTACK);
         //    //hack
