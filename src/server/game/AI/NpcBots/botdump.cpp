@@ -461,7 +461,7 @@ BotDataDumpResult NPCBotsDump::LoadDump(std::ifstream& input)
         } while (result->NextRow());
     }
     //second - join with entries from `creature` table (who knows what you have spawned there before you needed to import bots eh?)
-    result = WorldDatabase.PQuery("SELECT `id` FROM `creature` WHERE `id` BETWEEN %u AND %u", BOT_ENTRY_BEGIN, BOT_ENTRY_END);
+    result = WorldDatabase.Query("SELECT `id` FROM `creature` WHERE `id` IN (SELECT `entry` FROM `creature_template_npcbot_extras`) ORDER BY `id`");
     if (result)
     {
         fields = result->Fetch();
@@ -732,7 +732,7 @@ bool NPCBotsDump::GetDump(std::string& dump)
 
     std::set<uint32> valid_ids;
     bool integrityChecked = true;
-    for (uint32 i = BOT_ENTRY_BEGIN; i <= BOT_ENTRY_END; ++i)
+    for (uint32 i : BotDataMgr::GetExistingNPCBotIds())
     {
         BotDataVerificationResult res = VerifyWriteData(i);
         if (res == BOT_DATA_INCOMPLETE)

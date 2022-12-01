@@ -55,6 +55,7 @@
 BOOST_1_74_FIBONACCI_HEAP_MSVC_COMPILE_FIX(RespawnListContainer::value_type)
 
 //npcbot
+#include "botdatamgr.h"
 #include "botmgr.h"
 //end npcbot
 
@@ -4471,7 +4472,7 @@ void Map::SaveRespawnTime(SpawnObjectType type, ObjectGuid::LowType spawnId, uin
 void Map::SaveRespawnInfoDB(RespawnInfo const& info, CharacterDatabaseTransaction dbTrans)
 {
     //npcbot: DO NOT save npcbots respawn time
-    if (info.type == SPAWN_TYPE_CREATURE && info.entry >= BOT_ENTRY_BEGIN && info.entry <= BOT_ENTRY_END)
+    if (info.type == SPAWN_TYPE_CREATURE && BotDataMgr::SelectNpcBotData(info.entry))
         return;
     //end npcbot
 
