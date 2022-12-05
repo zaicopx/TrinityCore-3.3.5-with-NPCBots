@@ -2554,6 +2554,12 @@ void Creature::SaveRespawnTime(uint32 forceDelay)
         ri.type = SPAWN_TYPE_CREATURE;
         ri.spawnId = m_spawnId;
         ri.respawnTime = m_respawnTime;
+
+        //npcbot: save entry for checks
+        if (IsNPCBot())
+            ri.entry = GetEntry();
+        //end npcbot
+
         GetMap()->SaveRespawnInfoDB(ri);
         return;
     }
