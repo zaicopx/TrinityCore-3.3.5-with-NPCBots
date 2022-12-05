@@ -3,8 +3,8 @@
 
 #include "botcommon.h"
 
+#include "Creature.h"
 #include "SpellAuraEffects.h"
-#include "Unit.h"
 
 #include <array>
 #include <tuple>
