@@ -13931,7 +13931,7 @@ void bot_ai::OnBotSpellGo(Spell const* spell, bool ok)
                 uint32 rec = curInfo->RecoveryTime;
                 uint32 catrec = curInfo->CategoryRecoveryTime;
 
-                if (rec > 0)
+                if (rec > 0 || (!spell->GetCastTime() && curInfo->CalcCastTime()))
                     ApplyBotSpellCooldownMods(curInfo, rec);
                 if (catrec > 0 && !(curInfo->AttributesEx6 & SPELL_ATTR6_IGNORE_CATEGORY_COOLDOWN_MODS))
                     ApplyBotSpellCategoryCooldownMods(curInfo, catrec);
