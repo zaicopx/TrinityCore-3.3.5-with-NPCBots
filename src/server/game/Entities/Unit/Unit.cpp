@@ -5254,6 +5254,12 @@ GameObject* Unit::GetFirstGameObjectById(uint32 id) const
 
     return nullptr;
 }
+
+void Unit::SetCreator(Unit* creator)
+{
+    SetCreatorGUID(creator ? creator->GetGUID() : ObjectGuid::Empty);
+    m_creator = creator;
+}
 //end npcbot
 
 void Unit::AddGameObject(GameObject* gameObj)
@@ -11262,9 +11268,9 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
     // find player: owner of controlled `this` or `this` itself maybe
     Player* player = nullptr;
     //npcbot - loot recipient of bot's vehicle is owner
-    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetOwnerGUID().IsPlayer())
+    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetCreatorGUID().IsPlayer())
     {
-        if (Unit* uowner = attacker->GetOwner())
+        if (Unit* uowner = attacker->GetCreator())
             player = uowner->ToPlayer();
     }
     else

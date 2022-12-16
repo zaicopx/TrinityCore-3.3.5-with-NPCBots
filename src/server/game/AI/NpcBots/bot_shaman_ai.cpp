@@ -2073,7 +2073,7 @@ public:
                 Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_MANUAL_DESPAWN);
                 //me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, 2, me->GetOrientation());
                 //myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
-                myPet->SetCreatorGUID(master->GetGUID());
+                myPet->SetCreator(master);
                 myPet->SetOwnerGUID(me->GetGUID());
                 myPet->SetFaction(master->GetFaction());
                 myPet->SetControlledByPlayer(!IAmFree());
@@ -2296,7 +2296,7 @@ public:
 
             //TODO: gets overriden in Spell::EffectSummonType (end)
             //Without setting creator correctly it will be impossible to use summon X elemental totems
-            summon->SetCreatorGUID(me->GetGUID());
+            summon->SetCreator(me);
             summon->SetDisplayId(sObjectMgr->GetModelForTotem(SummonSlot(slot+1), Races(me->GetRace())));
             summon->SetFaction(me->GetFaction());
             summon->SetPvP(me->IsPvP());
