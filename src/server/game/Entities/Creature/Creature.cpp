@@ -1352,9 +1352,9 @@ void Creature::SetLootRecipient(Unit* unit, bool withGroup)
     */
     //npcbot - loot recipient of bot's vehicle is owner
     Player* player = nullptr;
-    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetOwnerGUID().IsPlayer())
+    if (unit->IsVehicle() && unit->GetCharmerGUID().IsCreature() && unit->GetCreatorGUID().IsPlayer())
     {
-        if (Unit* uowner = unit->GetOwner())
+        if (Unit* uowner = unit->GetCreator())
             player = uowner->ToPlayer();
     }
     else
@@ -2566,6 +2566,12 @@ void Creature::SaveRespawnTime(uint32 forceDelay)
         ri.type = SPAWN_TYPE_CREATURE;
         ri.spawnId = m_spawnId;
         ri.respawnTime = m_respawnTime;
+
+        //npcbot: save entry for checks
+        if (IsNPCBot())
+            ri.entry = GetEntry();
+        //end npcbot
+
         GetMap()->SaveRespawnInfoDB(ri);
         return;
     }

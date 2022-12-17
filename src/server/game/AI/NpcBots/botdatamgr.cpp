@@ -1,6 +1,7 @@
 #include "botdatamgr.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
+#include "GroupMgr.h"
 #include "Item.h"
 #include "Log.h"
 #include "Map.h"
@@ -17,9 +18,11 @@ NpcBots DB Data management
 typedef std::unordered_map<uint32 /*entry*/, NpcBotData*> NpcBotDataMap;
 typedef std::unordered_map<uint32 /*entry*/, NpcBotAppearanceData*> NpcBotAppearanceDataMap;
 typedef std::unordered_map<uint32 /*entry*/, NpcBotExtras*> NpcBotExtrasMap;
+typedef std::unordered_map<uint32 /*entry*/, NpcBotTransmogData*> NpcBotTransmogDataMap;
 NpcBotDataMap _botsData;
 NpcBotAppearanceDataMap _botsAppearanceData;
 NpcBotExtrasMap _botsExtras;
+NpcBotTransmogDataMap _botsTransmogData;
 NpcBotRegistry _existingBots;
 
 bool allBotsLoaded = false;
@@ -96,6 +99,33 @@ void BotDataMgr::LoadNpcBots(bool spawn)
     }
     else
         TC_LOG_INFO("server.loading", ">> Bots race data is not loaded. Table `creature_template_npcbot_extras` is empty!");
+
+    //                                              1     2        3
+    result = CharacterDatabase.Query("SELECT entry, slot, item_id, fake_id FROM characters_npcbot_transmog");
+    if (result)
+    {
+        do
+        {
+            field = result->Fetch();
+            index = 0;
+            uint32 entry =          field[  index].GetUInt32();
+
+            if (_botsTransmogData.count(entry) == 0)
+                _botsTransmogData[entry] = new NpcBotTransmogData();
+
+            //load data
+            uint8 slot =            field[++index].GetUInt8();
+            uint32 item_id =        field[++index].GetUInt32();
+            uint32 fake_id =        field[++index].GetUInt32();
+
+            _botsTransmogData[entry]->transmogs[slot] = { item_id, fake_id };
+
+        } while (result->NextRow());
+
+        TC_LOG_INFO("server.loading", ">> Bot transmog data loaded");
+    }
+    else
+        TC_LOG_INFO("server.loading", ">> Bots transmog data is not loaded. Table `characters_npcbot_transmog` is empty!");
 
     //                                       0      1      2      3     4        5          6          7          8          9               10          11          12         13
     result = CharacterDatabase.Query("SELECT entry, owner, roles, spec, faction, equipMhEx, equipOhEx, equipRhEx, equipHead, equipShoulders, equipChest, equipWaist, equipLegs, equipFeet,"
@@ -224,6 +254,47 @@ void BotDataMgr::LoadNpcBots(bool spawn)
     allBotsLoaded = true;
 }
 
+void BotDataMgr::LoadNpcBotGroupData()
+{
+    TC_LOG_INFO("server.loading", "Loading NPCBot Group members...");
+
+    uint32 oldMSTime = getMSTime();
+
+    CharacterDatabase.DirectExecute("DELETE FROM characters_npcbot_group_member WHERE guid NOT IN (SELECT guid FROM `groups`)");
+    CharacterDatabase.DirectExecute("DELETE FROM characters_npcbot_group_member WHERE entry NOT IN (SELECT entry FROM characters_npcbot)");
+
+    //                                                   0     1      2            3         4
+    QueryResult result = CharacterDatabase.Query("SELECT guid, entry, memberFlags, subgroup, roles FROM characters_npcbot_group_member ORDER BY guid");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 NPCBot group members. DB table `characters_npcbot_group_member` is empty!");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+
+        uint32 creature_id = fields[1].GetUInt32();
+        if (!SelectNpcBotExtras(creature_id))
+        {
+            TC_LOG_WARN("server.loading", "Table `characters_npcbot_group_member` contains non-NPCBot creature %u which will not be loaded!", creature_id);
+            continue;
+        }
+
+        if (Group* group = sGroupMgr->GetGroupByDbStoreId(fields[0].GetUInt32()))
+            group->LoadCreatureMemberFromDB(creature_id, fields[2].GetUInt8(), fields[3].GetUInt8(), fields[4].GetUInt8());
+        else
+            TC_LOG_ERROR("misc", "BotDataMgr::LoadNpcBotGroupData: Consistency failed, can't find group (storage id: %u)", fields[0].GetUInt32());
+
+        ++count;
+
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u NPCBot group members in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
+}
+
 void BotDataMgr::AddNpcBotData(uint32 entry, uint32 roles, uint8 spec, uint32 faction)
 {
     //botData must be allocated explicitly
@@ -261,11 +332,20 @@ void BotDataMgr::UpdateNpcBotData(uint32 entry, NpcBotDataUpdateType updateType,
     switch (updateType)
     {
         case NPCBOT_UPDATE_OWNER:
+            if (itr->second->owner == *(uint32*)(data))
+                break;
             itr->second->owner = *(uint32*)(data);
             bstmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_NPCBOT_OWNER);
             //"UPDATE characters_npcbot SET owner = ? WHERE entry = ?", CONNECTION_ASYNC
             bstmt->setUInt32(0, itr->second->owner);
             bstmt->setUInt32(1, entry);
+            CharacterDatabase.Execute(bstmt);
+            //break; //no break: erase transmogs
+        [[fallthrough]];
+        case NPCBOT_UPDATE_TRANSMOG_ERASE:
+            bstmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_NPCBOT_TRANSMOG);
+            //"DELETE FROM characters_npcbot_transmog WHERE entry = ?", CONNECTION_ASYNC
+            bstmt->setUInt32(0, entry);
             CharacterDatabase.Execute(bstmt);
             break;
         case NPCBOT_UPDATE_ROLES:
@@ -415,6 +495,13 @@ void BotDataMgr::UpdateNpcBotDataAll(uint32 playerGuid, NpcBotDataUpdateType upd
             bstmt->setUInt32(0, *(uint32*)(data));
             bstmt->setUInt32(1, playerGuid);
             CharacterDatabase.Execute(bstmt);
+            //break; //no break: erase transmogs
+        [[fallthrough]];
+        case NPCBOT_UPDATE_TRANSMOG_ERASE:
+            bstmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_NPCBOT_TRANSMOG_ALL);
+            //"DELETE FROM characters_npcbot_transmog WHERE entry IN (SELECT entry FROM characters_npcbot WHERE owner = ?)", CONNECTION_ASYNC
+            bstmt->setUInt32(0, playerGuid);
+            CharacterDatabase.Execute(bstmt);
             break;
         //case NPCBOT_UPDATE_ROLES:
         //case NPCBOT_UPDATE_FACTION:
@@ -478,6 +565,64 @@ NpcBotExtras const* BotDataMgr::SelectNpcBotExtras(uint32 entry)
     return itr != _botsExtras.end() ? itr->second : nullptr;
 }
 
+NpcBotTransmogData const* BotDataMgr::SelectNpcBotTransmogs(uint32 entry)
+{
+    NpcBotTransmogDataMap::const_iterator itr = _botsTransmogData.find(entry);
+    return itr != _botsTransmogData.end() ? itr->second : nullptr;
+}
+void BotDataMgr::UpdateNpcBotTransmogData(uint32 entry, uint8 slot, uint32 item_id, uint32 fake_id, bool update_db)
+{
+    ASSERT(slot < BOT_TRANSMOG_INVENTORY_SIZE);
+
+    NpcBotTransmogDataMap::iterator itr = _botsTransmogData.find(entry);
+    if (itr == _botsTransmogData.end())
+        _botsTransmogData[entry] = new NpcBotTransmogData();
+
+    _botsTransmogData[entry]->transmogs[slot] = { item_id, fake_id };
+
+    if (update_db)
+    {
+        CharacterDatabasePreparedStatement* bstmt = CharacterDatabase.GetPreparedStatement(CHAR_REP_NPCBOT_TRANSMOG);
+        //"REPLACE INTO characters_npcbot_transmog (entry, slot, item_id, fake_id) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC
+        bstmt->setUInt32(0, entry);
+        bstmt->setUInt8(1, slot);
+        bstmt->setUInt32(2, item_id);
+        bstmt->setUInt32(3, fake_id);
+        CharacterDatabase.Execute(bstmt);
+    }
+}
+
+void BotDataMgr::ResetNpcBotTransmogData(uint32 entry, bool update_db)
+{
+    NpcBotTransmogDataMap::iterator itr = _botsTransmogData.find(entry);
+    if (itr == _botsTransmogData.end())
+        return;
+
+    if (update_db)
+    {
+        CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+        for (uint8 i = 0; i != BOT_TRANSMOG_INVENTORY_SIZE; ++i)
+        {
+            if (_botsTransmogData[entry]->transmogs[i].first == 0 && _botsTransmogData[entry]->transmogs[i].second == 0)
+                continue;
+
+            CharacterDatabasePreparedStatement* bstmt = CharacterDatabase.GetPreparedStatement(CHAR_REP_NPCBOT_TRANSMOG);
+            //"REPLACE INTO characters_npcbot_transmog (entry, slot, item_id, fake_id) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC
+            bstmt->setUInt32(0, entry);
+            bstmt->setUInt8(1, i);
+            bstmt->setUInt32(2, 0);
+            bstmt->setUInt32(3, 0);
+            trans->Append(bstmt);
+        }
+
+        if (trans->GetSize() > 0)
+            CharacterDatabase.CommitTransaction(trans);
+    }
+
+    for (uint8 i = 0; i != BOT_TRANSMOG_INVENTORY_SIZE; ++i)
+        _botsTransmogData[entry]->transmogs[i] = { 0, 0 };
+}
+
 void BotDataMgr::RegisterBot(Creature const* bot)
 {
     if (_existingBots.find(bot) != _existingBots.end())
@@ -521,4 +666,44 @@ Creature const* BotDataMgr::FindBot(uint32 entry)
 NpcBotRegistry const& BotDataMgr::GetExistingNPCBots()
 {
     return _existingBots;
+}
+
+void BotDataMgr::GetNPCBotGuidsByOwner(std::vector<ObjectGuid> &guids_vec, ObjectGuid owner_guid)
+{
+    ASSERT(AllBotsLoaded());
+
+    std::shared_lock<std::shared_mutex> lock(*GetLock());
+
+    for (NpcBotRegistry::const_iterator ci = _existingBots.begin(); ci != _existingBots.end(); ++ci)
+    {
+        if (_botsData[(*ci)->GetEntry()]->owner == owner_guid.GetCounter())
+            guids_vec.push_back((*ci)->GetGUID());
+    }
+}
+
+ObjectGuid BotDataMgr::GetNPCBotGuid(uint32 entry)
+{
+    ASSERT(AllBotsLoaded());
+
+    std::shared_lock<std::shared_mutex> lock(*GetLock());
+
+    for (NpcBotRegistry::const_iterator ci = _existingBots.begin(); ci != _existingBots.end(); ++ci)
+    {
+        if ((*ci)->GetEntry() == entry)
+            return (*ci)->GetGUID();
+    }
+
+    return ObjectGuid::Empty;
+}
+
+std::vector<uint32> BotDataMgr::GetExistingNPCBotIds()
+{
+    ASSERT(AllBotsLoaded());
+
+    std::vector<uint32> existing_ids;
+    existing_ids.reserve(_botsData.size());
+    for (decltype(_botsData)::value_type const& bot_data_pair : _botsData)
+        existing_ids.push_back(bot_data_pair.first);
+
+    return existing_ids;
 }

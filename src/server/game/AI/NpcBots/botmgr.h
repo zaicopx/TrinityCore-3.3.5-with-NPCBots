@@ -69,6 +69,11 @@ class BotMgr
         static bool ShowEquippedCloak();
         static bool ShowEquippedHelm();
         static bool SendEquipListItems();
+        static bool IsTransmogEnabled();
+        static bool MixArmorClasses();
+        static bool MixWeaponClasses();
+        static bool MixWeaponInventoryTypes();
+        static bool TransmogUseEquipmentSlots();
         static bool IsClassEnabled(uint8 m_class);
         static bool IsEnrageOnDimissEnabled();
         static bool IsBotStatsLimitsEnabled();
@@ -88,6 +93,10 @@ class BotMgr
         static float GetBotStatLimitParry();
         static float GetBotStatLimitBlock();
         static float GetBotStatLimitCrit();
+        static float GetBotDamageModPhysical();
+        static float GetBotDamageModSpell();
+        static float GetBotHealingMod();
+        static float GetBotHPMod();
 
         static void Initialize();
         static void ReloadConfig();
@@ -111,10 +120,7 @@ class BotMgr
         static void ApplyBotThreatMods(Unit const* attacker, SpellInfo const* spellInfo, float& threat);
         static void ApplyBotEffectValueMultiplierMods(Unit const* caster, SpellInfo const* spellInfo, SpellEffIndex effIndex, float& multiplier);
         static float GetBotDamageTakenMod(Creature const* bot, bool magic);
-        static float GetBotDamageModPhysical();
-        static float GetBotDamageModSpell();
-        static float GetBotHealingMod();
-        static float GetBotHPMod();
+        static int32 GetBotStat(Creature const* bot, BotStatMods stat);
 
         void Update(uint32 diff);
 
@@ -137,7 +143,9 @@ class BotMgr
         bool RestrictBots(Creature const* bot, bool add) const;
         bool IsPartyInCombat() const;
         bool HasBotClass(uint8 botclass) const;
+        bool HasBotWithSpec(uint8 spec, bool alive = true) const;
         bool HasBotPetType(uint32 petType) const;
+        bool IsBeingResurrected(WorldObject const* corpse) const;
 
         static uint32 GetNpcBotCost(uint8 level, uint8 botclass);
         static std::string GetNpcBotCostStr(uint8 level, uint8 botclass);
@@ -148,6 +156,7 @@ class BotMgr
         void ReviveAllBots();
         void SendBotCommandState(uint8 state);
         void SendBotCommandStateRemove(uint8 state);
+        void SendBotAwaitState(uint8 state);
         void RecallAllBots(bool teleport = false);
         void RecallBot(Creature* bot);
         void KillAllBots();
@@ -158,6 +167,7 @@ class BotMgr
         void RemoveBot(ObjectGuid guid, uint8 removetype = BOT_REMOVE_LOGOUT);
         BotAddResult AddBot(Creature* bot, bool takeMoney);
         bool AddBotToGroup(Creature* bot);
+        void RemoveBotFromBGQueue(Creature const* bot);
         bool RemoveBotFromGroup(Creature* bot);
         bool RemoveAllBotsFromGroup();
 
@@ -171,6 +181,9 @@ class BotMgr
 
         uint8 GetBotAttackAngleMode() const { return _attackAngleMode; }
         void SetBotAttackAngleMode(uint8 mode) { _attackAngleMode = mode; }
+
+        bool GetBotAllowCombatPositioning() const { return _allowCombatPositioning; }
+        void SetBotAllowCombatPositioning(bool allow) { _allowCombatPositioning = allow; }
 
         uint32 GetEngageDelayDPS() const { return _npcBotEngageDelayDPS; }
         uint32 GetEngageDelayHeal() const { return _npcBotEngageDelayHeal; }
@@ -212,6 +225,7 @@ class BotMgr
         uint8 _exactAttackRange;
         uint8 _attackRangeMode;
         uint8 _attackAngleMode;
+        bool _allowCombatPositioning;
         uint32 _npcBotEngageDelayDPS;
         uint32 _npcBotEngageDelayHeal;
 

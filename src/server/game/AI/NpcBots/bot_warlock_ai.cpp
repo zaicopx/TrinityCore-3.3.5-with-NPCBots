@@ -1,6 +1,7 @@
 #include "bot_ai.h"
 #include "botmgr.h"
 #include "botspell.h"
+#include "bottraits.h"
 #include "Group.h"
 #include "Log.h"
 #include "Map.h"
@@ -726,35 +727,38 @@ public:
 
         void DoNormalAttack(uint32 diff)
         {
-            StartAttack(opponent, IsMelee());
+            Unit* mytar = opponent ? opponent : disttarget ? disttarget : nullptr;
+            if (!mytar)
+                return;
 
-            MoveBehind(opponent);
+            StartAttack(mytar, IsMelee());
+
+            MoveBehind(mytar);
 
             if (GC_Timer > diff)
                 return;
 
-            if (!CanAffectVictim(SPELL_SCHOOL_MASK_SHADOW|SPELL_SCHOOL_MASK_FIRE))
-                return;
+            auto [can_do_shadow, can_do_fire] = CanAffectVictimBools(mytar, SPELL_SCHOOL_SHADOW, SPELL_SCHOOL_FIRE);
 
-            float dist = me->GetDistance(opponent);
+            float dist = me->GetDistance(mytar);
 
             //spell reflections
-            if (IsSpellReady(CURSE_OF_THE_ELEMENTS_1, diff) && dist < CalcSpellMaxRange(CURSE_OF_THE_ELEMENTS_1) &&
-                CanRemoveReflectSpells(opponent, CURSE_OF_THE_ELEMENTS_1) &&
-                doCast(opponent, CURSE_OF_THE_ELEMENTS_1))
+            if (IsSpellReady(CURSE_OF_THE_ELEMENTS_1, diff) && can_do_shadow && dist < CalcSpellMaxRange(CURSE_OF_THE_ELEMENTS_1) &&
+                CanRemoveReflectSpells(mytar, CURSE_OF_THE_ELEMENTS_1) &&
+                doCast(mytar, CURSE_OF_THE_ELEMENTS_1))
                 return;
-            else if (IsSpellReady(CURSE_OF_WEAKNESS_1, diff) && dist < CalcSpellMaxRange(CURSE_OF_WEAKNESS_1) &&
-                CanRemoveReflectSpells(opponent, CURSE_OF_WEAKNESS_1) &&
-                doCast(opponent, CURSE_OF_WEAKNESS_1))
+            else if (IsSpellReady(CURSE_OF_WEAKNESS_1, diff) && can_do_shadow && dist < CalcSpellMaxRange(CURSE_OF_WEAKNESS_1) &&
+                CanRemoveReflectSpells(mytar, CURSE_OF_WEAKNESS_1) &&
+                doCast(mytar, CURSE_OF_WEAKNESS_1))
                 return;
 
             //Offensive heal (Death Coil)
-            if (IsSpellReady(DEATH_COIL_1, diff) && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(DEATH_COIL_1) &&
+            if (IsSpellReady(DEATH_COIL_1, diff) && can_do_shadow && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(DEATH_COIL_1) &&
                 GetHealthPCT(me) < 35)
             {
                 //if (me->IsNonMeleeSpellCast(true))
                 //    me->InterruptNonMeleeSpells(true);
-                if (doCast(opponent, GetSpell(DEATH_COIL_1)))
+                if (doCast(mytar, GetSpell(DEATH_COIL_1)))
                     return;
             }
 
@@ -779,10 +783,10 @@ public:
                 }
             }
             //Shadowfury
-            if (IsSpellReady(SHADOWFURY_1, diff) && HasRole(BOT_ROLE_DPS) && !CCed(opponent, true) && Rand() < 55)
+            if (IsSpellReady(SHADOWFURY_1, diff) && can_do_shadow && HasRole(BOT_ROLE_DPS) && !CCed(mytar, true) && Rand() < 55)
             {
                 if (FindSplashTarget(CalcSpellMaxRange(SHADOWFURY_1)) &&
-                    doCast(opponent, GetSpell(SHADOWFURY_1)))
+                    doCast(mytar, GetSpell(SHADOWFURY_1)))
                     return;
             }
             //Hellfire
@@ -824,15 +828,15 @@ public:
                 }
             }
             //Searing Pain (PvP)
-            if (longCasted && IsSpellReady(SEARING_PAIN_1, diff) && HasRole(BOT_ROLE_DPS) &&
+            if (longCasted && IsSpellReady(SEARING_PAIN_1, diff) && can_do_fire && HasRole(BOT_ROLE_DPS) &&
                 GetSpec() != BOT_SPEC_WARLOCK_AFFLICTION &&
-                opponent->GetTypeId() == TYPEID_PLAYER && Rand() < 35 && dist < CalcSpellMaxRange(SEARING_PAIN_1))
+                mytar->GetTypeId() == TYPEID_PLAYER && Rand() < 35 && dist < CalcSpellMaxRange(SEARING_PAIN_1))
             {
-                if (doCast(opponent, GetSpell(SEARING_PAIN_1)))
+                if (doCast(mytar, GetSpell(SEARING_PAIN_1)))
                     return;
             }
             //Shadowflame
-            if (longCasted && IsSpellReady(SHADOWFLAME_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 65)
+            if (longCasted && IsSpellReady(SHADOWFLAME_1, diff) && can_do_shadow && HasRole(BOT_ROLE_DPS) && Rand() < 65)
             {
                 std::list<Unit*> targets;
                 GetNearbyTargetsInConeList(targets, 8); //radius 10 yd
@@ -840,42 +844,42 @@ public:
                     return;
             }
             //Curse, checking affliction range
-            if (curseCheckTimer <= diff && GetSpellCooldown(CURSE_OF_WEAKNESS_1) <= diff && Rand() < 85 &&
-                dist < CalcSpellMaxRange(CURSE_OF_WEAKNESS_1) && opponent->GetHealth() > me->GetMaxHealth() / 4)
+            if (curseCheckTimer <= diff && can_do_shadow && GetSpellCooldown(CURSE_OF_WEAKNESS_1) <= diff && Rand() < 85 &&
+                dist < CalcSpellMaxRange(CURSE_OF_WEAKNESS_1) && mytar->GetHealth() > me->GetMaxHealth() / 4)
             {
                 curseCheckTimer = 2500;
-                uint32 curses = _getCursesMask(opponent);
+                uint32 curses = _getCursesMask(mytar);
                 if (!(curses & CURSE_MASK_MY_CURSE_ANY))
                 {
                     if (!(curses & CURSE_MASK_ELEMENTS) && GetSpell(CURSE_OF_THE_ELEMENTS_1) && !IAmFree() &&
                         (GetSpec() != BOT_SPEC_WARLOCK_AFFLICTION || Rand() < 33) &&
                         master->GetGroup() && master->GetGroup()->GetMembersCount() > 2)
                     {
-                        if (doCast(opponent, GetSpell(CURSE_OF_THE_ELEMENTS_1)))
+                        if (doCast(mytar, GetSpell(CURSE_OF_THE_ELEMENTS_1)))
                             return;
                     }
                     if (!(curses & CURSE_MASK_MY_AGONY) && GetSpell(CURSE_OF_AGONY_1) && HasRole(BOT_ROLE_DPS) &&
-                        opponent->GetHealth() > me->GetMaxHealth() / 4 * (1 + opponent->getAttackers().size()))
+                        mytar->GetHealth() > me->GetMaxHealth() / 4 * (1 + mytar->getAttackers().size()))
                     {
-                        if (doCast(opponent, GetSpell(CURSE_OF_AGONY_1)))
+                        if (doCast(mytar, GetSpell(CURSE_OF_AGONY_1)))
                             return;
                     }
-                    if (!(curses & CURSE_MASK_TONGUES) && GetSpell(CURSE_OF_TONGUES_1) && opponent->GetHealth() > me->GetMaxHealth() / 2 &&
-                        opponent->IsNonMeleeSpellCast(false, false, true))
+                    if (!(curses & CURSE_MASK_TONGUES) && GetSpell(CURSE_OF_TONGUES_1) && mytar->GetHealth() > me->GetMaxHealth() / 2 &&
+                        mytar->IsNonMeleeSpellCast(false, false, true))
                     {
-                        if (doCast(opponent, GetSpell(CURSE_OF_TONGUES_1)))
+                        if (doCast(mytar, GetSpell(CURSE_OF_TONGUES_1)))
                             return;
                     }
-                    if (!(curses & CURSE_MASK_EXHAUSTION) && GetSpell(CURSE_OF_EXHAUSTION_1) && !CCed(opponent, true) &&
-                        opponent->IsControlledByPlayer() && !opponent->HasAuraWithMechanic(1<<MECHANIC_SNARE))
+                    if (!(curses & CURSE_MASK_EXHAUSTION) && GetSpell(CURSE_OF_EXHAUSTION_1) && !CCed(mytar, true) &&
+                        mytar->IsControlledByPlayer() && !mytar->HasAuraWithMechanic(1<<MECHANIC_SNARE))
                     {
-                        if (doCast(opponent, GetSpell(CURSE_OF_EXHAUSTION_1)))
+                        if (doCast(mytar, GetSpell(CURSE_OF_EXHAUSTION_1)))
                             return;
                     }
                     if (!(curses & CURSE_MASK_WEAKNESS) && GetSpell(CURSE_OF_WEAKNESS_1) && me->GetMap()->IsDungeon() &&
-                        opponent->GetMaxHealth() > me->GetMaxHealth() * 2)
+                        mytar->GetMaxHealth() > me->GetMaxHealth() * 2)
                     {
-                        if (doCast(opponent, GetSpell(CURSE_OF_WEAKNESS_1)))
+                        if (doCast(mytar, GetSpell(CURSE_OF_WEAKNESS_1)))
                             return;
                     }
                 }
@@ -885,56 +889,56 @@ public:
                 return;
 
             //Chaos Bolt
-            if (IsSpellReady(CHAOS_BOLT_1, diff) && dist < CalcSpellMaxRange(CHAOS_BOLT_1))
+            if (IsSpellReady(CHAOS_BOLT_1, diff) && can_do_fire && dist < CalcSpellMaxRange(CHAOS_BOLT_1))
             {
-                if (doCast(opponent, GetSpell(CHAOS_BOLT_1)))
+                if (doCast(mytar, GetSpell(CHAOS_BOLT_1)))
                     return;
             }
             //Soul Fire 1
-            if (IsSpellReady(SOUL_FIRE_1, diff) && Rand() < 150 && dist < CalcSpellMaxRange(SOUL_FIRE_1) &&
-                (opponent->IsPolymorphed() || me->HasAuraTypeWithAffectMask(SPELL_AURA_NO_REAGENT_USE, sSpellMgr->GetSpellInfo(SOUL_FIRE_1))))
+            if (IsSpellReady(SOUL_FIRE_1, diff) && can_do_fire && Rand() < 150 && dist < CalcSpellMaxRange(SOUL_FIRE_1) &&
+                (mytar->IsPolymorphed() || me->HasAuraTypeWithAffectMask(SPELL_AURA_NO_REAGENT_USE, sSpellMgr->GetSpellInfo(SOUL_FIRE_1))))
             {
-                if (doCast(opponent, GetSpell(SOUL_FIRE_1)))
+                if (doCast(mytar, GetSpell(SOUL_FIRE_1)))
                     return;
             }
             //Conflagrate (always glyphed, does not consume dot)
-            if (longCasted && IsSpellReady(CONFLAGRATE_1, diff) && dist < CalcSpellMaxRange(CONFLAGRATE_1) &&
-                opponent->HasAuraState(AURA_STATE_CONFLAGRATE) &&
-                opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0, me->GetGUID()))
+            if (longCasted && IsSpellReady(CONFLAGRATE_1, diff) && can_do_fire && dist < CalcSpellMaxRange(CONFLAGRATE_1) &&
+                mytar->HasAuraState(AURA_STATE_CONFLAGRATE) &&
+                mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0, me->GetGUID()))
             {
-                if (doCast(opponent, GetSpell(CONFLAGRATE_1)))
+                if (doCast(mytar, GetSpell(CONFLAGRATE_1)))
                     return;
             }
             //Shadowburn
-            if (longCasted && IsSpellReady(SHADOWBURN_1, diff) && dist < CalcSpellMaxRange(SHADOWBURN_1) &&
-                opponent->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
+            if (longCasted && IsSpellReady(SHADOWBURN_1, diff) && can_do_shadow && dist < CalcSpellMaxRange(SHADOWBURN_1) &&
+                mytar->HasAuraState(AURA_STATE_HEALTHLESS_35_PERCENT))
             {
-                if (doCast(opponent, GetSpell(SHADOWBURN_1)))
+                if (doCast(mytar, GetSpell(SHADOWBURN_1)))
                     return;
             }
             //Immolate
-            if (IsSpellReady(IMMOLATE_1, diff) && Rand() < 85 && dist < CalcSpellMaxRange(IMMOLATE_1) &&
+            if (IsSpellReady(IMMOLATE_1, diff) && can_do_fire && Rand() < 85 && dist < CalcSpellMaxRange(IMMOLATE_1) &&
                 (GetSpec() != BOT_SPEC_WARLOCK_AFFLICTION || !GetSpell(UNSTABLE_AFFLICTION_1)) &&
-                (GetSpell(CONFLAGRATE_1) || opponent->GetHealth() > me->GetMaxHealth()/4 * (1 + opponent->getAttackers().size())) &&
-                !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0, me->GetGUID()))
+                (GetSpell(CONFLAGRATE_1) || mytar->GetHealth() > me->GetMaxHealth()/4 * (1 + mytar->getAttackers().size())) &&
+                !mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0, me->GetGUID()))
             {
-                if (doCast(opponent, GetSpell(IMMOLATE_1)))
+                if (doCast(mytar, GetSpell(IMMOLATE_1)))
                     return;
             }
             //Haunt
-            if (IsSpellReady(HAUNT_1, diff) && Rand() < 125 && dist < CalcSpellMaxRange(HAUNT_1) &&
-                opponent->GetHealth() > me->GetMaxHealth()/4 * (1 + opponent->getAttackers().size()) &&
-                !opponent->GetAuraEffect(SPELL_AURA_MOD_DAMAGE_FROM_CASTER, SPELLFAMILY_WARLOCK, 0x0, 0x40000, 0x0, me->GetGUID()))
+            if (IsSpellReady(HAUNT_1, diff) && can_do_shadow && Rand() < 125 && dist < CalcSpellMaxRange(HAUNT_1) &&
+                mytar->GetHealth() > me->GetMaxHealth()/4 * (1 + mytar->getAttackers().size()) &&
+                !mytar->GetAuraEffect(SPELL_AURA_MOD_DAMAGE_FROM_CASTER, SPELLFAMILY_WARLOCK, 0x0, 0x40000, 0x0, me->GetGUID()))
             {
-                if (doCast(opponent, GetSpell(HAUNT_1)))
+                if (doCast(mytar, GetSpell(HAUNT_1)))
                     return;
             }
             //Unstable Affliction
-            if (IsSpellReady(UNSTABLE_AFFLICTION_1, diff) && Rand() < 115 && dist < CalcSpellMaxRange(UNSTABLE_AFFLICTION_1) &&
-                opponent->GetHealth() > me->GetMaxHealth()/4 * (1 + opponent->getAttackers().size()) &&
-                !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x0, 0x100, 0x0, me->GetGUID()))
+            if (IsSpellReady(UNSTABLE_AFFLICTION_1, diff) && can_do_shadow && Rand() < 115 && dist < CalcSpellMaxRange(UNSTABLE_AFFLICTION_1) &&
+                mytar->GetHealth() > me->GetMaxHealth()/4 * (1 + mytar->getAttackers().size()) &&
+                !mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x0, 0x100, 0x0, me->GetGUID()))
             {
-                if (doCast(opponent, GetSpell(UNSTABLE_AFFLICTION_1)))
+                if (doCast(mytar, GetSpell(UNSTABLE_AFFLICTION_1)))
                     return;
             }
             //Seed of Corruption
@@ -950,27 +954,27 @@ public:
                 SetSpellCooldown(SEED_OF_CORRUPTION_1, 1000); //fail
             }
             //Corruption
-            if (IsSpellReady(CORRUPTION_1, diff) && Rand() < 90 && dist < CalcSpellMaxRange(CORRUPTION_1) &&
-                opponent->GetHealth() > me->GetMaxHealth()/4 * (1 + opponent->getAttackers().size()) &&
-                !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x2, 0x0, 0x0, me->GetGUID()) &&//corruption
-                !opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x0, 0x10, 0x0, me->GetGUID()))//seed of corruption
+            if (IsSpellReady(CORRUPTION_1, diff) && can_do_shadow && Rand() < 90 && dist < CalcSpellMaxRange(CORRUPTION_1) &&
+                mytar->GetHealth() > me->GetMaxHealth()/4 * (1 + mytar->getAttackers().size()) &&
+                !mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x2, 0x0, 0x0, me->GetGUID()) &&//corruption
+                !mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x0, 0x10, 0x0, me->GetGUID()))//seed of corruption
             {
-                if (doCast(opponent, GetSpell(CORRUPTION_1)))
+                if (doCast(mytar, GetSpell(CORRUPTION_1)))
                     return;
             }
             //Drain Soul: only if can quad damage
-            if (IsSpellReady(DRAIN_SOUL_1, diff) && opponent->GetTypeId() == TYPEID_UNIT &&
-                Rand() < (50 + 85 * me->GetMap()->IsDungeon()) && GetHealthPCT(opponent) < 25 &&
-                opponent->GetHealth() > me->GetMaxHealth() / 2 && dist < CalcSpellMaxRange(DRAIN_SOUL_1))
+            if (IsSpellReady(DRAIN_SOUL_1, diff) && can_do_shadow && mytar->GetTypeId() == TYPEID_UNIT &&
+                Rand() < (50 + 85 * me->GetMap()->IsDungeon()) && GetHealthPCT(mytar) < 25 &&
+                mytar->GetHealth() > me->GetMaxHealth() / 2 && dist < CalcSpellMaxRange(DRAIN_SOUL_1))
             {
-                if (doCast(opponent, GetSpell(DRAIN_SOUL_1)))
+                if (doCast(mytar, GetSpell(DRAIN_SOUL_1)))
                     return;
             }
             //Soul Fire (conditional)
-            if (IsSpellReady(SOUL_FIRE_1, diff) && Rand() < 90 && dist < CalcSpellMaxRange(SOUL_FIRE_1) &&
-                opponent->GetHealth() > me->GetMaxHealth()/8 * (1 + opponent->getAttackers().size()) && me->HasAura(BACKDRAFT_BUFF))
+            if (IsSpellReady(SOUL_FIRE_1, diff) && can_do_fire && Rand() < 90 && dist < CalcSpellMaxRange(SOUL_FIRE_1) &&
+                mytar->GetHealth() > me->GetMaxHealth()/8 * (1 + mytar->getAttackers().size()) && me->HasAura(BACKDRAFT_BUFF))
             {
-                if (doCast(opponent, GetSpell(SOUL_FIRE_1)))
+                if (doCast(mytar, GetSpell(SOUL_FIRE_1)))
                     return;
             }
             //Main: Shadow Bolt, Incinerate, Searing Pain (tank), checking destruction range
@@ -979,23 +983,37 @@ public:
                 uint32 boltinerate =
                     IsTank() && GetSpell(SEARING_PAIN_1) ? SEARING_PAIN_1 :
                     GetSpell(SHADOW_BOLT_1) && GetSpec() == BOT_SPEC_WARLOCK_AFFLICTION ? SHADOW_BOLT_1 :
-                    GetSpell(INCINERATE_1) && opponent->HasAuraState(AURA_STATE_CONFLAGRATE) ?
-                    //opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0) &&
-                    //opponent->GetAuraEffect(SPELL_AURA_MOD_ATTACKER_SPELL_CRIT_CHANCE, SPELLFAMILY_WARLOCK, 213, 0) &&
+                    GetSpell(INCINERATE_1) && mytar->HasAuraState(AURA_STATE_CONFLAGRATE) ?
+                    //mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_WARLOCK, 0x4, 0x0, 0x0) &&
+                    //mytar->GetAuraEffect(SPELL_AURA_MOD_ATTACKER_SPELL_CRIT_CHANCE, SPELLFAMILY_WARLOCK, 213, 0) &&
                     //(me->GetMap()->IsRaid() || !me->HasAura(SHADOW_TRANCE_BUFF)) ?
                     INCINERATE_1 : SHADOW_BOLT_1;
 
-                if (boltinerate && doCast(opponent, GetSpell(boltinerate)))
+                bool can_cast_boltinerate;
+                switch (boltinerate)
+                {
+                    case SEARING_PAIN_1: case INCINERATE_1:
+                        can_cast_boltinerate = can_do_fire;
+                        break;
+                    case SHADOW_BOLT_1:
+                        can_cast_boltinerate = can_do_shadow;
+                        break;
+                    default:
+                        can_cast_boltinerate = true;
+                        break;
+                }
+
+                if (boltinerate && can_cast_boltinerate && doCast(mytar, GetSpell(boltinerate)))
                     return;
             }
 
             if (Spell const* shot = me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
             {
-                if (shot->GetSpellInfo()->Id == SHOOT_WAND && shot->m_targets.GetUnitTarget() != opponent)
+                if (shot->GetSpellInfo()->Id == SHOOT_WAND && shot->m_targets.GetUnitTarget() != mytar)
                     me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL);
             }
-            else if (IsSpellReady(SHOOT_WAND, diff) && me->GetDistance(opponent) < 30 && GetEquips(BOT_SLOT_RANGED) &&
-                doCast(opponent, SHOOT_WAND))
+            else if (IsSpellReady(SHOOT_WAND, diff) && me->GetDistance(mytar) < 30 && GetEquips(BOT_SLOT_RANGED) &&
+                doCast(mytar, SHOOT_WAND))
                 return;
         }
 
@@ -1747,7 +1765,7 @@ public:
             Creature* myPet = me->SummonCreature(myPetType, *me, TEMPSUMMON_CORPSE_DESPAWN);
             me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, me->GetOrientation() + M_PI / 2);
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
-            myPet->SetCreatorGUID(master->GetGUID());
+            myPet->SetCreator(master);
             myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());

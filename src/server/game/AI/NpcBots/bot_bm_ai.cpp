@@ -313,9 +313,13 @@ public:
 
         void Attack(uint32 /*diff*/)
         {
-            StartAttack(opponent, IsMelee());
+            Unit* mytar = opponent ? opponent : disttarget ? disttarget : nullptr;
+            if (!mytar)
+                return;
 
-            MoveBehind(opponent);
+            StartAttack(mytar, IsMelee());
+
+            MoveBehind(mytar);
         }
 
         void DoBMMeleeAttackIfReady()
@@ -488,7 +492,8 @@ public:
                 if (!IAmFree())
                     master->GetBotMgr()->AddBot(illusion, false);
 
-                illusion->SetCreatorGUID(me->GetGUID()); //TempSummon* Map::SummonCreature()
+                illusion->SetCreator(master); //TempSummon* Map::SummonCreature()
+                illusion->SetOwnerGUID(me->GetGUID());
 
                 //copy visuals
                 //illusion->SetEntry(me->GetEntry());

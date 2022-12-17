@@ -3917,6 +3917,7 @@ void Unit::RemoveAppliedAuras(uint32 spellId, std::function<bool(AuraApplication
         if (check(iter->second))
         {
             RemoveAura(iter, removeMode);
+            iter = m_appliedAuras.lower_bound(spellId);
             continue;
         }
         ++iter;
@@ -3930,6 +3931,7 @@ void Unit::RemoveOwnedAuras(uint32 spellId, std::function<bool(Aura const*)> con
         if (check(iter->second))
         {
             RemoveOwnedAura(iter, removeMode);
+            iter = m_ownedAuras.lower_bound(spellId);
             continue;
         }
         ++iter;
@@ -5267,6 +5269,12 @@ GameObject* Unit::GetFirstGameObjectById(uint32 id) const
             return *i;
 
     return nullptr;
+}
+
+void Unit::SetCreator(Unit* creator)
+{
+    SetCreatorGUID(creator ? creator->GetGUID() : ObjectGuid::Empty);
+    m_creator = creator;
 }
 //end npcbot
 
@@ -8777,7 +8785,7 @@ bool Unit::IsAlwaysVisibleFor(WorldObject const* seer) const
 
     //npcbot - bots are always visible for owner
     if (Creature const* bot = ToCreature())
-        if (bot->GetBotAI() && seer->GetGUID() == bot->GetBotOwner()->GetGUID())
+        if ((bot->GetBotAI() || bot->GetBotPetAI()) && seer->GetGUID() == bot->GetBotOwner()->GetGUID())
             return true;
     //end npcbot
 
@@ -11280,9 +11288,9 @@ bool Unit::InitTamedPet(Pet* pet, uint8 level, uint32 spell_id)
     // find player: owner of controlled `this` or `this` itself maybe
     Player* player = nullptr;
     //npcbot - loot recipient of bot's vehicle is owner
-    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetOwnerGUID().IsPlayer())
+    if (attacker && attacker->IsVehicle() && attacker->GetCharmerGUID().IsCreature() && attacker->GetCreatorGUID().IsPlayer())
     {
-        if (Unit* uowner = attacker->GetOwner())
+        if (Unit* uowner = attacker->GetCreator())
             player = uowner->ToPlayer();
     }
     else

@@ -8,12 +8,15 @@
 #include "ItemDefines.h"
 #include "Position.h"
 
+#include <tuple>
+
 /*
 NpcBot System by Trickerer (onlysuffering@gmail.com)
 */
 
 class TeleportHomeEvent;
 class TeleportFinishEvent;
+class AwaitStateRemovalEvent;
 
 enum CombatRating : uint8;
 enum GossipOptionIcon : uint8;
@@ -106,10 +109,15 @@ class bot_ai : public CreatureAI
         void SetBotCommandState(uint8 st, bool force = false, Position* newpos = nullptr);
         void RemoveBotCommandState(uint8 st);
         bool HasBotCommandState(uint8 st) const { return (m_botCommandState & st); }
+        void SetBotAwaitState(uint8 state);
+        inline void RemoveBotAwaitState(uint8 state) { _botAwaitState &= ~state; }
+        inline bool HasBotAwaitState(uint8 state) const { return !!(_botAwaitState & state); }
+        void EventRemoveBotAwaitState(uint8 state);
+        void AbortAwaitStateRemoval();
         uint8 GetBotCommandState() const { return m_botCommandState; }
         bool IsInBotParty(Unit const* unit) const;
         bool IsInBotParty(ObjectGuid guid) const;
-        bool CanBotAttack(Unit const* target, int8 byspell = 0) const;
+        bool CanBotAttack(Unit const* target, int8 byspell = 0, bool secondary = false) const;
         bool CanBotAttackOnVehicle() const;
         void ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const;
         void ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool iscrit) const;
@@ -190,6 +198,8 @@ class bot_ai : public CreatureAI
         bool CanUseAmmo() const;
         bool RespectEquipsAttackTime() const;
         bool CanChangeEquip(uint8 slot) const;
+        bool CanDisplayNonWeaponEquipmentChanges() const;
+        bool IsValidTransmog(uint8 slot, ItemTemplate const* source) const;
         virtual bool CanSeeEveryone() const { return false; }
         virtual float GetBotArmorPenetrationCoef() const { return armor_pen; }
         virtual uint32 GetAIMiscValue(uint32 /*data*/) const { return 0; }
@@ -199,11 +209,13 @@ class bot_ai : public CreatureAI
 
         MeleeHitOutcome BotRollCustomMeleeOutcomeAgainst(Unit const* victim, WeaponAttackType attType) const;
 
-        float GetTotalBotStat(uint8 stat) const { return _getTotalBotStat(stat); }
+        float GetTotalBotStat(BotStatMods stat) const { return _getTotalBotStat(stat); }
 
         Item* GetEquips(uint8 slot) const { return _equips[slot]; }
         Item* GetEquipsByGuid(ObjectGuid itemGuid) const;
-        bool UnEquipAll(ObjectGuid::LowType receiver);
+        uint32 GetEquipDisplayId(uint8 slot) const;
+        bool UnEquipAll(ObjectGuid receiver);
+        bool HasRealEquipment() const;
         float GetAverageItemLevel() const;
 
         void CastBotItemCombatSpell(DamageInfo const& damageInfo);
@@ -288,7 +300,7 @@ class bot_ai : public CreatureAI
         virtual bool BuffTarget(Unit* /*target*/, uint32 /*diff*/) { return false; }
 
         void BuffAndHealGroup(uint32 diff);
-        void RezGroup(uint32 REZZ);
+        void ResurrectGroup(uint32 REZZ);
         void CureGroup(uint32 cureSpell, uint32 diff);
         void SetStats(bool force);
         void DefaultInit();
@@ -341,10 +353,10 @@ class bot_ai : public CreatureAI
         SpellCastResult CheckBotCast(Unit const* victim, uint32 spellId) const;
         virtual bool removeShapeshiftForm() { return true; }
 
-        bool CanAffectVictim(uint32 schoolMask) const;
         bool CanRemoveReflectSpells(Unit const* target, uint32 spellId) const;
 
         bool IsMelee() const;
+        bool IsRanged() const;
 
         bool IsShootingWand(Unit const* u = nullptr) const;
 
@@ -469,6 +481,7 @@ class bot_ai : public CreatureAI
         Player* master;
         Player* _prevRRobin;
         Unit* opponent;
+        Unit* disttarget;
         Creature* botPet;
         EventProcessor Events;
         ObjectGuid aftercastTargetGuid;
@@ -540,13 +553,13 @@ class bot_ai : public CreatureAI
         bool _canUseRanged() const;
         bool _canUseRelic() const;
         bool _canEquip(Item const* newItem, uint8 slot, bool ignoreItemLevel = false) const;
-        bool _unequip(uint8 slot, ObjectGuid::LowType receiver);
-        bool _equip(uint8 slot, Item* newItem, ObjectGuid::LowType receiver);
-        bool _resetEquipment(uint8 slot, ObjectGuid::LowType receiver);
+        bool _unequip(uint8 slot, ObjectGuid receiver);
+        bool _equip(uint8 slot, Item* newItem, ObjectGuid receiver);
+        bool _resetEquipment(uint8 slot, ObjectGuid receiver);
 
         void _castBotItemUseSpell(Item const* item, SpellCastTargets const& targets/*, uint8 cast_count = 0, uint32 glyphIndex = 0*/);
 
-        Unit* _getTarget(bool byspell, bool ranged, bool &reset) const;
+        std::tuple<Unit*, Unit*> _getTargets(bool byspell, bool ranged, bool &reset) const;
         Unit* _getVehicleTarget(BotVehicleStrats strat) const;
         void _listAuras(Player const* player, Unit const* unit) const;
         bool _checkImmunities(Unit const* target, SpellInfo const* spellInfo) const;
@@ -570,8 +583,8 @@ class bot_ai : public CreatureAI
         void _LocalizeGameObject(Player const* forPlayer, std::string &gameobjectName, uint32 entry) const;
         void _LocalizeSpell(Player const* forPlayer, std::string &spellName, uint32 entry) const;
 
-        float _getBotStat(uint8 slot, uint8 stat) const;
-        float _getTotalBotStat(uint8 stat) const;
+        float _getBotStat(uint8 slot, BotStatMods stat) const;
+        float _getTotalBotStat(BotStatMods stat) const;
         float _getRatingMultiplier(CombatRating cr) const;
 
         float _getStatScore(uint8 stat) const;
@@ -584,6 +597,7 @@ class bot_ai : public CreatureAI
         Position movepos, attackpos;
 
         uint8 m_botCommandState;
+        uint8 _botAwaitState;
 
         //stats
         float hit, parry, dodge, block, crit, dmg_taken_phy, dmg_taken_mag, armor_pen;
@@ -624,6 +638,7 @@ class bot_ai : public CreatureAI
 
         TeleportHomeEvent* teleHomeEvent;
         TeleportFinishEvent* teleFinishEvent;
+        AwaitStateRemovalEvent* awaitStateRemEvent;
 
         struct BotSpell
         {
@@ -680,6 +695,7 @@ class bot_ai : public CreatureAI
         };
 
         bool HasOrders() const { return !_orders.empty(); }
+        bool IsLastOrder(BotOrderTypes order_type, uint32 param1) const;
         std::size_t GetOrdersCount() const { return _orders.size(); }
         bool AddOrder(BotOrder&& order);
         void CancelOrder(BotOrder const& order);

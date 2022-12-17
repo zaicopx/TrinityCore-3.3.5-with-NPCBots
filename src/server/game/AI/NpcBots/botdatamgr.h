@@ -5,6 +5,7 @@
 
 #include <set>
 #include <shared_mutex>
+#include <vector>
 
 class Creature;
 
@@ -17,6 +18,7 @@ enum NpcBotDataUpdateType
     NPCBOT_UPDATE_FACTION,
     NPCBOT_UPDATE_EQUIPS,
     NPCBOT_UPDATE_ERASE,
+    NPCBOT_UPDATE_TRANSMOG_ERASE,
     NPCBOT_UPDATE_END
 };
 
@@ -68,6 +70,20 @@ private:
     NpcBotExtras(NpcBotExtras const&);
 };
 
+struct NpcBotTransmogData
+{
+    friend class BotDataMgr;
+public:
+    std::pair<uint32 /*item_id*/, uint32 /*fake_id*/> transmogs[BOT_TRANSMOG_INVENTORY_SIZE];
+private:
+    explicit NpcBotTransmogData()
+    {
+        for (uint8 i = 0; i != BOT_TRANSMOG_INVENTORY_SIZE; ++i)
+            transmogs[i] = { 0, 0 };
+    }
+    NpcBotTransmogData(NpcBotTransmogData const&);
+};
+
 struct NpcBotStats
 {
 public:
@@ -108,6 +124,7 @@ class BotDataMgr
 {
     public:
         static void LoadNpcBots(bool spawn = true);
+        static void LoadNpcBotGroupData();
 
         static void AddNpcBotData(uint32 entry, uint32 roles, uint8 spec, uint32 faction);
         static NpcBotData const* SelectNpcBotData(uint32 entry);
@@ -118,12 +135,19 @@ class BotDataMgr
         static NpcBotAppearanceData const* SelectNpcBotAppearance(uint32 entry);
         static NpcBotExtras const* SelectNpcBotExtras(uint32 entry);
 
+        static NpcBotTransmogData const* SelectNpcBotTransmogs(uint32 entry);
+        static void UpdateNpcBotTransmogData(uint32 entry, uint8 slot, uint32 item_id, uint32 fake_id, bool update_db = true);
+        static void ResetNpcBotTransmogData(uint32 entry, bool update_db = true);
+
         static bool AllBotsLoaded();
 
         static void RegisterBot(Creature const* bot);
         static void UnregisterBot(Creature const* bot);
         static Creature const* FindBot(uint32 entry);
         static NpcBotRegistry const& GetExistingNPCBots();
+        static void GetNPCBotGuidsByOwner(std::vector<ObjectGuid> &guids_vec, ObjectGuid owner_guid);
+        static ObjectGuid GetNPCBotGuid(uint32 entry);
+        static std::vector<uint32> GetExistingNPCBotIds();
 
         static std::shared_mutex* GetLock();
 

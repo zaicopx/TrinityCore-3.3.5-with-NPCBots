@@ -1,5 +1,7 @@
 #include "bot_ai.h"
 #include "botmgr.h"
+#include "bottext.h"
+#include "bottraits.h"
 #include "Group.h"
 #include "Item.h"
 #include "Log.h"
@@ -1042,26 +1044,29 @@ public:
 
         void DoNormalAttack(uint32 diff)
         {
-            StartAttack(opponent, IsMelee());
-
-            if (!CanAffectVictim(SPELL_SCHOOL_MASK_FIRE|SPELL_SCHOOL_MASK_NATURE))
+            Unit* mytar = opponent ? opponent : disttarget ? disttarget : nullptr;
+            if (!mytar)
                 return;
+
+            StartAttack(mytar, IsMelee());
+
+            auto [can_do_frost, can_do_fire, can_do_nature] = CanAffectVictimBools(mytar, SPELL_SCHOOL_FROST, SPELL_SCHOOL_FIRE, SPELL_SCHOOL_NATURE);
 
             //AttackerSet m_attackers = master->getAttackers();
             //AttackerSet b_attackers = me->getAttackers();
-            float dist = me->GetDistance(opponent);
+            float dist = me->GetDistance(mytar);
 
             //spell reflections
-            if (IsSpellReady(EARTH_SHOCK_1, diff) && HasRole(BOT_ROLE_DPS) && dist < 25 && CanRemoveReflectSpells(opponent, EARTH_SHOCK_1) &&
-                doCast(opponent, EARTH_SHOCK_1))
+            if (IsSpellReady(EARTH_SHOCK_1, diff) && can_do_nature && HasRole(BOT_ROLE_DPS) && dist < 25 && CanRemoveReflectSpells(mytar, EARTH_SHOCK_1) &&
+                doCast(mytar, EARTH_SHOCK_1))
                 return;
 
-            MoveBehind(opponent);
+            MoveBehind(mytar);
 
             //STORMSTRIKE
-            if (IsSpellReady(STORMSTRIKE_1, diff) && HasRole(BOT_ROLE_DPS) && IsMelee() && dist <= 5 && Rand() < 120)
+            if (IsSpellReady(STORMSTRIKE_1, diff) && can_do_nature && HasRole(BOT_ROLE_DPS) && IsMelee() && dist <= 5 && Rand() < 120)
             {
-                if (doCast(opponent, GetSpell(STORMSTRIKE_1)))
+                if (doCast(mytar, GetSpell(STORMSTRIKE_1)))
                     return;
             }
             //SHOCKS
@@ -1069,23 +1074,23 @@ public:
                 (GetSpell(FLAME_SHOCK_1) || GetSpell(EARTH_SHOCK_1) || GetSpell(FROST_SHOCK_1)) &&
                 dist < 25 && Rand() < 70)
             {
-                if (GetSpell(FLAME_SHOCK_1))
+                if (GetSpell(FLAME_SHOCK_1) && can_do_fire)
                 {
-                    AuraEffect const* fsh = opponent->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_SHAMAN, 0x10000000, 0x0, 0x0, me->GetGUID());
+                    AuraEffect const* fsh = mytar->GetAuraEffect(SPELL_AURA_PERIODIC_DAMAGE, SPELLFAMILY_SHAMAN, 0x10000000, 0x0, 0x0, me->GetGUID());
                     if (!fsh || fsh->GetBase()->GetDuration() < 3000)
                     {
-                        if (doCast(opponent, GetSpell(FLAME_SHOCK_1)))
+                        if (doCast(mytar, GetSpell(FLAME_SHOCK_1)))
                             return;
                     }
                 }
 
-                uint32 SHOCK = GetSpell(FROST_SHOCK_1);
-                if (!SHOCK)
+                uint32 SHOCK = can_do_frost ? GetSpell(FROST_SHOCK_1) : 0;
+                if (!SHOCK && can_do_nature)
                     SHOCK = GetSpell(EARTH_SHOCK_1);
 
                 if (SHOCK)
                 {
-                    if (doCast(opponent, SHOCK))
+                    if (doCast(mytar, SHOCK))
                         return;
                 }
             }
@@ -1093,17 +1098,17 @@ public:
             //Feral Spirit
             if (IsSpellReady(FERAL_SPIRIT_1, diff) && HasRole(BOT_ROLE_DPS) && Rand() < 40 && dist < 5)
             {
-                SummonBotPet(opponent);
+                SummonBotPet(mytar);
                 SetSpellCooldown(FERAL_SPIRIT_1, 180000);
                 return;
             }
 
             //LAVA BURST
-            if (IsSpellReady(LAVA_BURST_1, diff) && _spec == BOT_SPEC_SHAMAN_ELEMENTAL &&
+            if (IsSpellReady(LAVA_BURST_1, diff) && can_do_fire && _spec == BOT_SPEC_SHAMAN_ELEMENTAL &&
                 HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LAVA_BURST_1) && Rand() < 60 &&
                 (me->getAttackers().empty() || dist > 10))
             {
-                if (doCast(opponent, GetSpell(LAVA_BURST_1)))
+                if (doCast(mytar, GetSpell(LAVA_BURST_1)))
                     return;
             }
 
@@ -1112,17 +1117,17 @@ public:
                 return;
 
             //CHAIN LIGHTNING
-            if (IsSpellReady(CHAIN_LIGHTNING_1, diff) && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(CHAIN_LIGHTNING_1) && Rand() < 80)
+            if (IsSpellReady(CHAIN_LIGHTNING_1, diff) && can_do_nature && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(CHAIN_LIGHTNING_1) && Rand() < 80)
             {
-                Unit* u = FindSplashTarget(35.f, opponent, 5.f);
-                if (u && doCast(opponent, GetSpell(CHAIN_LIGHTNING_1)))
+                Unit* u = FindSplashTarget(35.f, mytar, 5.f);
+                if (u && doCast(mytar, GetSpell(CHAIN_LIGHTNING_1)))
                     return;
             }
             //LIGHTNING BOLT
-            if (IsSpellReady(LIGHTNING_BOLT_1, diff) && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LIGHTNING_BOLT_1))
+            if (IsSpellReady(LIGHTNING_BOLT_1, diff) && can_do_nature && HasRole(BOT_ROLE_DPS) && dist < CalcSpellMaxRange(LIGHTNING_BOLT_1))
             {
                 uint32 LIGHTNING_BOLT = GetSpell(LIGHTNING_BOLT_1);
-                if (doCast(opponent, LIGHTNING_BOLT))
+                if (doCast(mytar, LIGHTNING_BOLT))
                     return;
             }
         }
@@ -1176,7 +1181,7 @@ public:
             if (GC_Timer > diff || me->IsMounted() || IsCasting() || Rand() > 25)
                 return;
 
-            RezGroup(GetSpell(ANCESTRAL_SPIRIT_1));
+            ResurrectGroup(GetSpell(ANCESTRAL_SPIRIT_1));
 
             if (mhEnchantExpireTimer > 0 && mhEnchantExpireTimer <= diff)
             {
@@ -2068,7 +2073,7 @@ public:
                 Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_MANUAL_DESPAWN);
                 //me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, 2, me->GetOrientation());
                 //myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
-                myPet->SetCreatorGUID(master->GetGUID());
+                myPet->SetCreator(master);
                 myPet->SetOwnerGUID(me->GetGUID());
                 myPet->SetFaction(master->GetFaction());
                 myPet->SetControlledByPlayer(!IAmFree());
@@ -2291,7 +2296,7 @@ public:
 
             //TODO: gets overriden in Spell::EffectSummonType (end)
             //Without setting creator correctly it will be impossible to use summon X elemental totems
-            summon->SetCreatorGUID(me->GetGUID());
+            summon->SetCreator(me);
             summon->SetDisplayId(sObjectMgr->GetModelForTotem(SummonSlot(slot+1), Races(me->GetRace())));
             summon->SetFaction(me->GetFaction());
             summon->SetPvP(me->IsPvP());

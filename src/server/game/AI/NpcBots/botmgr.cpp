@@ -1,9 +1,12 @@
+#include "Battleground.h"
+#include "BattlegroundMgr.h"
 #include "bot_ai.h"
 #include "bot_Events.h"
 #include "botdatamgr.h"
 #include "botdpstracker.h"
 #include "botmgr.h"
 #include "botspell.h"
+#include "bottext.h"
 #include "bpet_ai.h"
 #include "Chat.h"
 #include "Config.h"
@@ -61,6 +64,11 @@ bool _displayEquipment;
 bool _showCloak;
 bool _showHelm;
 bool _sendEquipListItems;
+bool _transmog_enable;
+bool _transmog_mixArmorClasses;
+bool _transmog_mixWeaponClasses;
+bool _transmog_mixWeaponInvTypes;
+bool _transmog_useEquipmentSlots;
 bool _enableclass_blademaster;
 bool _enableclass_sphynx;
 bool _enableclass_archmage;
@@ -158,6 +166,7 @@ BotMgr::BotMgr(Player* const master) : _owner(master), _dpstracker(new DPSTracke
     _exactAttackRange = 0;
     _attackRangeMode = BOT_ATTACK_RANGE_SHORT;
     _attackAngleMode = BOT_ATTACK_ANGLE_NORMAL;
+    _allowCombatPositioning = true;
     _npcBotEngageDelayDPS = _npcBotEngageDelayDPS_default;
     _npcBotEngageDelayHeal = _npcBotEngageDelayHeal_default;
 
@@ -180,6 +189,7 @@ void BotMgr::Initialize()
         return;
 
     BotDataMgr::LoadNpcBots();
+    BotDataMgr::LoadNpcBotGroupData();
 }
 
 void BotMgr::ReloadConfig()
@@ -229,6 +239,11 @@ void BotMgr::LoadConfig(bool reload)
     _showCloak                      = sConfigMgr->GetBoolDefault("NpcBot.EquipmentDisplay.ShowCloak", true);
     _showHelm                       = sConfigMgr->GetBoolDefault("NpcBot.EquipmentDisplay.ShowHelm", false);
     _sendEquipListItems             = sConfigMgr->GetBoolDefault("NpcBot.Gossip.ShowEquipmentListItems", false);
+    _transmog_enable                = sConfigMgr->GetBoolDefault("NpcBot.Transmog.Enable", false);
+    _transmog_mixArmorClasses       = sConfigMgr->GetBoolDefault("NpcBot.Transmog.MixArmorClasses", false);
+    _transmog_mixWeaponClasses      = sConfigMgr->GetBoolDefault("NpcBot.Transmog.MixWeaponClasses", false);
+    _transmog_mixWeaponInvTypes     = sConfigMgr->GetBoolDefault("NpcBot.Transmog.MixWeaponInventoryTypes", false);
+    _transmog_useEquipmentSlots     = sConfigMgr->GetBoolDefault("NpcBot.Transmog.UseEquipmentSlots", false);
     _enableclass_blademaster        = sConfigMgr->GetBoolDefault("NpcBot.NewClasses.Blademaster.Enable", true);
     _enableclass_sphynx             = sConfigMgr->GetBoolDefault("NpcBot.NewClasses.ObsidianDestroyer.Enable", true);
     _enableclass_archmage           = sConfigMgr->GetBoolDefault("NpcBot.NewClasses.Archmage.Enable", true);
@@ -362,6 +377,27 @@ bool BotMgr::SendEquipListItems()
     return _sendEquipListItems;
 }
 
+bool BotMgr::IsTransmogEnabled()
+{
+    return _transmog_enable;
+}
+bool BotMgr::MixArmorClasses()
+{
+    return _transmog_mixArmorClasses;
+}
+bool BotMgr::MixWeaponClasses()
+{
+    return _transmog_mixWeaponClasses;
+}
+bool BotMgr::MixWeaponInventoryTypes()
+{
+    return _transmog_mixWeaponInvTypes;
+}
+bool BotMgr::TransmogUseEquipmentSlots()
+{
+    return _transmog_useEquipmentSlots;
+}
+
 bool BotMgr::IsClassEnabled(uint8 m_class)
 {
     switch (m_class)
@@ -477,6 +513,9 @@ int32 BotMgr::GetBotInfoPacketsLimit()
 
 bool BotMgr::LimitBots(Map const* map)
 {
+    if (map->IsBattlegroundOrArena())
+        return true;
+
     if (_limitNpcBotsDungeons && map->IsNonRaidDungeon())
         return true;
     if (_limitNpcBotsRaids && map->IsRaid())
@@ -606,8 +645,15 @@ bool BotMgr::RestrictBots(Creature const* bot, bool add) const
             if (!_owner->GetGroup() || !_owner->GetGroup()->IsMember(bot->GetGUID()))
                 return true;
 
-        InstanceMap const* map = currMap->ToInstanceMap();
-        if (map->GetPlayersCountExceptGMs() + uint32(add) > map->GetMaxPlayers())
+        uint32 max_players = 0;
+        if (currMap->IsDungeon())
+            max_players = currMap->ToInstanceMap()->GetMaxPlayers();
+        else if (currMap->IsBattleground())
+            max_players = _owner->GetBattleground()->GetMaxPlayersPerTeam();
+        else if (currMap->IsBattleArena())
+            max_players = _owner->GetBattleground()->GetArenaType();
+
+        if (max_players && currMap->GetPlayersCountExceptGMs() + uint32(add) > max_players)
             return true;
     }
 
@@ -642,11 +688,66 @@ bool BotMgr::HasBotClass(uint8 botclass) const
     return false;
 }
 
+bool BotMgr::HasBotWithSpec(uint8 spec, bool alive) const
+{
+    for (BotMap::const_iterator itr = _bots.cbegin(); itr != _bots.cend(); ++itr)
+        if (itr->second->GetBotAI()->GetSpec() == spec && (!alive || itr->second->IsAlive()))
+            return true;
+
+    return false;
+}
+
 bool BotMgr::HasBotPetType(uint32 petType) const
 {
     for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
         if (itr->second->GetBotsPet() && itr->second->GetBotAI()->GetAIMiscValue(BOTAI_MISC_PET_TYPE) == petType)
             return true;
+
+    return false;
+}
+
+bool BotMgr::IsBeingResurrected(WorldObject const* corpse) const
+{
+    std::vector<Unit const*> casters;
+    if (_owner->IsNonMeleeSpellCast(false, true, true))
+        casters.push_back(_owner);
+    for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
+    {
+        if (itr->second->IsNonMeleeSpellCast(false, true, true))
+            casters.push_back(itr->second);
+    }
+
+    if (Group const* group = _owner->GetGroup())
+    {
+        for (GroupReference const* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            Player const* player = itr->GetSource();
+            if (!player || player == _owner || player->FindMap() != corpse->GetMap())
+                continue;
+
+            if (player->IsNonMeleeSpellCast(false, true, true))
+                casters.push_back(player);
+
+            if (player->HaveBot())
+            {
+                BotMap const* map = player->GetBotMgr()->GetBotMap();
+                for (BotMap::const_iterator bitr = map->begin(); bitr != map->end(); ++bitr)
+                {
+                    if (bitr->second->IsNonMeleeSpellCast(false, true, true))
+                        casters.push_back(bitr->second);
+                }
+            }
+        }
+    }
+
+    for (Unit const* caster : casters)
+    {
+        if (Spell const* spell = caster->GetCurrentSpell(CURRENT_GENERIC_SPELL))
+        {
+            if (corpse->GetGUID() == (corpse->ToCorpse() ? spell->m_targets.GetCorpseTargetGUID() : spell->m_targets.GetUnitTargetGUID()))
+                return true;
+        }
+    }
 
     return false;
 }
@@ -859,7 +960,7 @@ void BotMgr::TeleportBot(Creature* bot, Map* newMap, Position* pos, bool quick)
     _teleportBot(bot, newMap, pos->GetPositionX(), pos->GetPositionY(), pos->GetPositionZ(), pos->GetOrientation(), quick);
 }
 
-void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 /*removetype*/)
+void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 removetype)
 {
     BotMap::const_iterator itr = _bots.find(guid);
     ASSERT(itr != _bots.end(), "Trying to remove bot which does not belong to this botmgr(b)!!");
@@ -874,18 +975,20 @@ void BotMgr::CleanupsBeforeBotDelete(ObjectGuid guid, uint8 /*removetype*/)
     if (bot->GetVehicle())
         bot->ExitVehicle();
 
-    RemoveBotFromGroup(bot);
+    RemoveBotFromBGQueue(bot);
+    if (removetype != BOT_REMOVE_LOGOUT)
+        RemoveBotFromGroup(bot);
 
     //remove any summons
     bot->GetBotAI()->UnsummonAll();
 
-    ASSERT(bot->GetOwnerGUID() == _owner->GetGUID());
-    bot->SetOwnerGUID(ObjectGuid::Empty);
+    ASSERT(bot->GetCreatorGUID() == _owner->GetGUID());
+    //bot->SetOwnerGUID(ObjectGuid::Empty);
     //_owner->m_Controlled.erase(bot);
     bot->SetControlledByPlayer(false);
     //bot->RemoveUnitFlag(UNIT_FLAG_PVP_ATTACKABLE);
     bot->SetByteValue(UNIT_FIELD_BYTES_2, 1, 0);
-    bot->SetCreatorGUID(ObjectGuid::Empty);
+    bot->SetCreator(nullptr);
 
     Map* map = bot->FindMap();
     if (!map || map->IsDungeon())
@@ -944,6 +1047,7 @@ void BotMgr::RemoveBot(ObjectGuid guid, uint8 removetype)
 
     if (removetype == BOT_REMOVE_DISMISS)
     {
+        BotDataMgr::ResetNpcBotTransmogData(bot->GetEntry(), false);
         uint32 newOwner = 0;
         BotDataMgr::UpdateNpcBotData(bot->GetEntry(), NPCBOT_UPDATE_OWNER, &newOwner);
     }
@@ -1037,9 +1141,9 @@ BotAddResult BotMgr::AddBot(Creature* bot, bool takeMoney)
 
     _bots[bot->GetGUID()] = bot;
 
-    ASSERT(!bot->GetOwnerGUID());
-    bot->SetOwnerGUID(_owner->GetGUID());
-    bot->SetCreatorGUID(_owner->GetGUID()); //needed in case of FFAPVP
+    ASSERT(!bot->GetCreatorGUID());
+    //bot->SetOwnerGUID(_owner->GetGUID());
+    bot->SetCreator(_owner); //needed in case of FFAPVP
     //_owner->m_Controlled.insert(bot);
     bot->SetControlledByPlayer(true);
     bot->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
@@ -1104,6 +1208,15 @@ bool BotMgr::AddBotToGroup(Creature* bot)
     return false;
 }
 
+void BotMgr::RemoveBotFromBGQueue(Creature const* bot)
+{
+    for (uint8 i = 0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
+    {
+        if (BattlegroundQueueTypeId bgQueueTypeId = _owner->GetBattlegroundQueueTypeId(i))
+            sBattlegroundMgr->GetBattlegroundQueue(bgQueueTypeId).RemovePlayer(bot->GetGUID(), true);
+    }
+}
+
 bool BotMgr::RemoveBotFromGroup(Creature* bot)
 {
     ASSERT(GetBot(bot->GetGUID()));
@@ -1111,6 +1224,8 @@ bool BotMgr::RemoveBotFromGroup(Creature* bot)
     Group* gr = _owner->GetGroup();
     if (!gr || !gr->IsMember(bot->GetGUID()))
         return false;
+
+    RemoveBotFromBGQueue(bot);
 
     if (bot->GetBotAI()->HasRole(BOT_ROLE_PARTY) && !_owner->GetSession()->PlayerLogout())
         bot->GetBotAI()->ToggleRole(BOT_ROLE_PARTY, true);
@@ -1254,6 +1369,12 @@ void BotMgr::SendBotCommandStateRemove(uint8 state)
 {
     for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
         itr->second->GetBotAI()->RemoveBotCommandState(state);
+}
+
+void BotMgr::SendBotAwaitState(uint8 state)
+{
+    for (BotMap::const_iterator itr = _bots.begin(); itr != _bots.end(); ++itr)
+        itr->second->GetBotAI()->SetBotAwaitState(state);
 }
 
 void BotMgr::RecallAllBots(bool teleport)
@@ -1483,6 +1604,9 @@ void BotMgr::OnBotOwnerSpellGo(Unit const* caster, Spell const* spell, bool ok)
     {
         if (Creature const* bot = itr->second)
         {
+            if (!bot->IsInWorld() || !bot->IsAlive())
+                continue;
+
             bot->GetBotAI()->OnBotOwnerSpellGo(spell, ok);
             //if (Creature const* botpet = bot->GetBotsPet())
             //    botpet->GetBotAI()->OnBotPetOwnerSpellGo(spell, ok);
@@ -1622,6 +1746,11 @@ void BotMgr::ApplyBotEffectValueMultiplierMods(Unit const* caster, SpellInfo con
 float BotMgr::GetBotDamageTakenMod(Creature const* bot, bool magic)
 {
     return bot->GetBotAI()->GetBotDamageTakenMod(magic);
+}
+
+int32 BotMgr::GetBotStat(Creature const* bot, BotStatMods stat)
+{
+    return bot->GetBotAI()->GetTotalBotStat(stat);
 }
 
 float BotMgr::GetBotDamageModPhysical()

@@ -2,6 +2,8 @@
 #include "bot_GridNotifiers.h"
 #include "botmgr.h"
 #include "botspell.h"
+#include "bottext.h"
+#include "bottraits.h"
 #include "CellImpl.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -136,18 +138,18 @@ public:
 
             //1. Corpse near current target
             if ((IAmFree() || !master->GetGroup() || master->GetGroup()->GetMembersCount() <= 3) &&
-                opponent->GetHealth() <= me->GetMaxHealth() * 3)
+                me->GetVictim() && me->GetVictim()->GetHealth() <= me->GetMaxHealth() * 3)
             {
-                auto corpse_pred = [&, opponent = opponent, mindist = ceradius](Creature const* c) mutable {
-                    if (_isUsableCorpse(c) && c->GetDistance(opponent) < mindist)
+                auto corpse_pred = [this, mtar = me->GetVictim(), mindist = ceradius](Creature const* c) mutable {
+                    if (_isUsableCorpse(c) && c->GetDistance(mtar) < mindist)
                     {
-                        mindist = c->GetDistance(opponent);
+                        mindist = c->GetDistance(mtar);
                         return true;
                     }
                     return false;
                 };
                 Creature* creature = nullptr;
-                Trinity::CreatureLastSearcher searcher(opponent, creature, corpse_pred);
+                Trinity::CreatureLastSearcher searcher(me, creature, corpse_pred);
                 Cell::VisitAllObjects(me, searcher, ceinfo->RangeEntry->RangeMax[0]);
 
                 if (creature)
@@ -162,13 +164,13 @@ public:
 
             //2. Find a corpse with enough idiots around it (this one in n^2 so open for reviews)
             {
-                auto corpse_pred = [&, me = me, ai = this, maxmob = std::size_t(CE_MIN_TARGETS-1)](Creature const* c) mutable {
+                auto corpse_pred = [&, this, me = me, maxmob = std::size_t(CE_MIN_TARGETS-1)](Creature const* c) mutable {
                     if (_isUsableCorpse(c))
                     {
                         std::list<Unit*> units;
-                        NearbyHostileUnitCheck check(me, ceradius, ai, 0, c);
+                        NearbyHostileUnitCheck check(me, ceradius, this, 0, c);
                         Trinity::UnitListSearcher searcher(c, units, check);
-                        Cell::VisitAllObjects(me, searcher, ceradius);
+                        Cell::VisitAllObjects(c, searcher, ceradius);
                         if (units.size() > maxmob)
                         {
                             maxmob = units.size();
@@ -179,7 +181,7 @@ public:
                     return false;
                 };
                 std::list<Creature*> corpses;
-                Trinity::CreatureListSearcher searcher(opponent, corpses, corpse_pred);
+                Trinity::CreatureListSearcher searcher(me, corpses, corpse_pred);
                 Cell::VisitAllObjects(me, searcher, ceinfo->RangeEntry->RangeMax[0]);
 
                 if (Creature* corpse = corpses.empty() ? nullptr : corpses.size() == 1 ? corpses.front() :
@@ -211,14 +213,13 @@ public:
                 return false;
             };
             Creature* creature = nullptr;
-            Trinity::CreatureLastSearcher searcher(opponent, creature, corpse_pred);
+            Trinity::CreatureLastSearcher searcher(me, creature, corpse_pred);
             Cell::VisitAllObjects(me, searcher, 25.f);
 
             if (creature)
             {
                 if (doCast(creature, GetSpell(RAISE_DEAD_1)))
-                {}
-                return;
+                    return;
             }
         }
 
@@ -354,9 +355,13 @@ public:
 
         void Attack(uint32 diff)
         {
-            StartAttack(opponent, IsMelee());
+            Unit* mytar = opponent ? opponent : disttarget ? disttarget : nullptr;
+            if (!mytar)
+                return;
 
-            MoveBehind(opponent);
+            StartAttack(mytar, IsMelee());
+
+            MoveBehind(mytar);
 
             if (!HasRole(BOT_ROLE_DPS))
                 return;
@@ -364,19 +369,22 @@ public:
             if (GC_Timer > diff)
                 return;
 
+            if (!CanAffectVictimAny(mytar, SPELL_SCHOOL_SHADOW, SPELL_SCHOOL_ARCANE))
+                return;
+
             //Cripple
-            if (IsSpellReady(CRIPPLE_1, diff) && me->GetDistance(opponent) < 30 &&
+            if (IsSpellReady(CRIPPLE_1, diff) && me->GetDistance(mytar) < 30 &&
                 me->GetLevel() >= 50 && me->GetPower(POWER_MANA) >= CRIPPLE_COST &&
-                opponent->GetMaxNegativeAuraModifier(SPELL_AURA_MOD_MELEE_HASTE) >= 0 &&
-                (opponent->GetTypeId() == TYPEID_PLAYER || opponent->GetHealth() > me->GetMaxHealth() * 3))
+                mytar->GetMaxNegativeAuraModifier(SPELL_AURA_MOD_MELEE_HASTE) >= 0 &&
+                (mytar->GetTypeId() == TYPEID_PLAYER || mytar->GetHealth() > me->GetMaxHealth() * 3))
             {
-                if (doCast(opponent, GetSpell(CRIPPLE_1)))
+                if (doCast(mytar, GetSpell(CRIPPLE_1)))
                     return;
             }
 
-            if (IsSpellReady(MAIN_ATTACK_1, diff) && me->GetDistance(opponent) < 30)
+            if (IsSpellReady(MAIN_ATTACK_1, diff) && me->GetDistance(mytar) < 30)
             {
-                if (doCast(opponent, GetSpell(MAIN_ATTACK_1)))
+                if (doCast(mytar, GetSpell(MAIN_ATTACK_1)))
                     return;
             }
         }
@@ -589,8 +597,8 @@ public:
             Position pos = from->GetPosition();
 
             Creature* myPet = me->SummonCreature(BOT_PET_NECROSKELETON, pos, TEMPSUMMON_MANUAL_DESPAWN);
-            myPet->SetCreatorGUID(master->GetGUID());
-            myPet->SetOwnerGUID(master->GetGUID());
+            myPet->SetCreator(master);
+            myPet->SetOwnerGUID(me->GetGUID());
             myPet->SetFaction(master->GetFaction());
             myPet->SetControlledByPlayer(!IAmFree());
             myPet->SetPvP(me->IsPvP());
