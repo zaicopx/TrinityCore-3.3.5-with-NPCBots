@@ -2216,6 +2216,12 @@ Player* WorldObject::GetCharmerOrOwnerPlayerOrPlayerItself() const
 
 Player* WorldObject::GetAffectingPlayer() const
 {
+    //nocbot: affecting player is creator
+    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBotOrPet())
+        if (Unit* creator = ToUnit()->GetCreator())
+            return creator->ToPlayer();
+    //end npcbot
+
     if (!GetCharmerOrOwnerGUID())
         return const_cast<WorldObject*>(this)->ToPlayer();
 
