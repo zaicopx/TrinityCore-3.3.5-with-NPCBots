@@ -1887,6 +1887,9 @@ bool Aura::CanStackWith(Aura const* existingAura) const
         return false;
 
     // check spell group stack rules
+    //npcbots: do not check stack rules for npcbots
+    if (!(sameCaster && GetOwner()->GetTypeId() == TYPEID_UNIT && GetOwner()->ToCreature()->IsNPCBotOrPet()))
+    //end npcbot
     switch (sSpellMgr->CheckSpellGroupStackRules(m_spellInfo, existingSpellInfo))
     {
         case SPELL_GROUP_STACK_RULE_EXCLUSIVE:
