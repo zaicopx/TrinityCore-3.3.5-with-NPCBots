@@ -1738,10 +1738,10 @@ public:
             trans->PAppend("UPDATE creature_template_temp_npcbot_create SET modelid1 = %u", modelId);
         trans->Append("INSERT INTO creature_template SELECT * FROM creature_template_temp_npcbot_create");
         trans->Append("DROP TEMPORARY TABLE creature_template_temp_npcbot_create");
-        trans->PAppend("INSERT INTO creature_template_npcbot_extras VALUES (%u, %u, %u)", newentry, uint32(*bclass), uint32(*race));
-        trans->PAppend("INSERT INTO creature_equip_template SELECT %u, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)) ids", newentry, uint32(*bclass));
+        trans->PAppend("REPLACE INTO creature_template_npcbot_extras VALUES (%u, %u, %u)", newentry, uint32(*bclass), uint32(*race));
+        trans->PAppend("REPLACE INTO creature_equip_template SELECT %u, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)) ids", newentry, uint32(*bclass));
         if (can_change_appearance)
-            trans->PAppend("INSERT INTO creature_template_npcbot_appearance VALUES (%u, \"%s\", %u, %u, %u, %u, %u, %u)",
+            trans->PAppend("REPLACE INTO creature_template_npcbot_appearance VALUES (%u, \"%s\", %u, %u, %u, %u, %u, %u)",
                 newentry, namestr.c_str(), uint32(*gender), uint32(*skin), uint32(*face), uint32(*hairstyle), uint32(*haircolor), uint32(*features));
         WorldDatabase.DirectCommitTransaction(trans);
 
@@ -1835,6 +1835,7 @@ public:
         NpcBotExtras const* _botExtras = BotDataMgr::SelectNpcBotExtras(id);
         if (!_botExtras)
         {
+            delete creature;
             handler->PSendSysMessage("No class/race data found for bot %u!", id);
             handler->SetSentErrorMessage(true);
             return false;
@@ -1847,9 +1848,9 @@ public:
         uint32 db_guid = creature->GetSpawnId();
         if (!creature->LoadBotCreatureFromDB(db_guid, map))
         {
+            delete creature;
             handler->SendSysMessage("Cannot load npcbot from DB!");
             handler->SetSentErrorMessage(true);
-            delete creature;
             return false;
         }
 
