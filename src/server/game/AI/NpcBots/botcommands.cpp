@@ -44,9 +44,9 @@ private:
     // model ids with different sound sets tied to them
     enum SoundSetModels : uint32
     {
-        SOUNDSETMODEL_HUMAN_MALE_1          = 3192,
+        SOUNDSETMODEL_HUMAN_MALE_1          = 1492,
         SOUNDSETMODEL_HUMAN_MALE_2          = 1290,
-        SOUNDSETMODEL_HUMAN_MALE_3          = 793,
+        SOUNDSETMODEL_HUMAN_MALE_3          = 1699,
         SOUNDSETMODEL_HUMAN_FEMALE_1        = 1295,
         SOUNDSETMODEL_HUMAN_FEMALE_2        = 1296,
         SOUNDSETMODEL_HUMAN_FEMALE_3        = 1297,
@@ -57,10 +57,10 @@ private:
         SOUNDSETMODEL_DWARF_FEMALE_2        = 1407,
         SOUNDSETMODEL_DWARF_FEMALE_3        = 2585,
         SOUNDSETMODEL_NIGHTELF_MALE_1       = 1285,
-        SOUNDSETMODEL_NIGHTELF_MALE_2       = 3599,
-        SOUNDSETMODEL_NIGHTELF_MALE_3       = 3602,
-        SOUNDSETMODEL_NIGHTELF_FEMALE_1     = 2151,
-        SOUNDSETMODEL_NIGHTELF_FEMALE_2     = 2081,
+        SOUNDSETMODEL_NIGHTELF_MALE_2       = 1704,
+        SOUNDSETMODEL_NIGHTELF_MALE_3       = 1706,
+        SOUNDSETMODEL_NIGHTELF_FEMALE_1     = 1681,
+        SOUNDSETMODEL_NIGHTELF_FEMALE_2     = 1682,
         SOUNDSETMODEL_NIGHTELF_FEMALE_3     = 1719,
         SOUNDSETMODEL_GNOME_MALE_1          = 1832,
         SOUNDSETMODEL_GNOME_MALE_2          = 4287,
@@ -68,9 +68,9 @@ private:
         SOUNDSETMODEL_GNOME_FEMALE_1        = 3124,
         SOUNDSETMODEL_GNOME_FEMALE_2        = 5378,
         SOUNDSETMODEL_GNOME_FEMALE_3        = 3108,
-        SOUNDSETMODEL_DRAENEI_MALE_1        = 16503,
-        SOUNDSETMODEL_DRAENEI_MALE_2        = 16477,
-        SOUNDSETMODEL_DRAENEI_MALE_3        = 16475,
+        SOUNDSETMODEL_DRAENEI_MALE_1        = 16226,
+        SOUNDSETMODEL_DRAENEI_MALE_2        = 16589,
+        SOUNDSETMODEL_DRAENEI_MALE_3        = 16224,
         SOUNDSETMODEL_DRAENEI_FEMALE_1      = 16222,
         SOUNDSETMODEL_DRAENEI_FEMALE_2      = 16202,
         SOUNDSETMODEL_DRAENEI_FEMALE_3      = 16636,
@@ -1738,10 +1738,10 @@ public:
             trans->PAppend("UPDATE creature_template_temp_npcbot_create SET modelid1 = %u", modelId);
         trans->Append("INSERT INTO creature_template SELECT * FROM creature_template_temp_npcbot_create");
         trans->Append("DROP TEMPORARY TABLE creature_template_temp_npcbot_create");
-        trans->PAppend("INSERT INTO creature_template_npcbot_extras VALUES (%u, %u, %u)", newentry, uint32(*bclass), uint32(*race));
-        trans->PAppend("INSERT INTO creature_equip_template SELECT %u, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)) ids", newentry, uint32(*bclass));
+        trans->PAppend("REPLACE INTO creature_template_npcbot_extras VALUES (%u, %u, %u)", newentry, uint32(*bclass), uint32(*race));
+        trans->PAppend("REPLACE INTO creature_equip_template SELECT %u, 1, ids.itemID1, ids.itemID2, ids.itemID3, -1 FROM (SELECT itemID1, itemID2, itemID3 FROM creature_equip_template WHERE CreatureID = (SELECT entry FROM creature_template_npcbot_extras WHERE class = %u LIMIT 1)) ids", newentry, uint32(*bclass));
         if (can_change_appearance)
-            trans->PAppend("INSERT INTO creature_template_npcbot_appearance VALUES (%u, \"%s\", %u, %u, %u, %u, %u, %u)",
+            trans->PAppend("REPLACE INTO creature_template_npcbot_appearance VALUES (%u, \"%s\", %u, %u, %u, %u, %u, %u)",
                 newentry, namestr.c_str(), uint32(*gender), uint32(*skin), uint32(*face), uint32(*hairstyle), uint32(*haircolor), uint32(*features));
         WorldDatabase.DirectCommitTransaction(trans);
 
@@ -1835,6 +1835,7 @@ public:
         NpcBotExtras const* _botExtras = BotDataMgr::SelectNpcBotExtras(id);
         if (!_botExtras)
         {
+            delete creature;
             handler->PSendSysMessage("No class/race data found for bot %u!", id);
             handler->SetSentErrorMessage(true);
             return false;
@@ -1847,9 +1848,9 @@ public:
         uint32 db_guid = creature->GetSpawnId();
         if (!creature->LoadBotCreatureFromDB(db_guid, map))
         {
+            delete creature;
             handler->SendSysMessage("Cannot load npcbot from DB!");
             handler->SetSentErrorMessage(true);
-            delete creature;
             return false;
         }
 
@@ -1933,37 +1934,35 @@ public:
 
     static bool HandleNpcBotInfoCommand(ChatHandler* handler)
     {
-        Player* owner = handler->GetSession()->GetPlayer();
-        if (!owner->GetTarget())
+        Player* player = handler->GetSession()->GetPlayer();
+        if (!player->GetTarget())
         {
             handler->SendSysMessage(".npcbot info");
             handler->SendSysMessage("Lists NpcBots count of each class owned by selected player. You can use this on self and your party members");
             handler->SetSentErrorMessage(true);
             return false;
         }
-        Player* master = owner->GetSelectedPlayer();
+        Player* master = player->GetSelectedPlayer();
         if (!master)
         {
             handler->SendSysMessage("No player selected");
             handler->SetSentErrorMessage(true);
             return false;
         }
-        if (handler->HasLowerSecurity(master, ObjectGuid::Empty))
-        {
-            handler->SendSysMessage("Invalid target");
-            handler->SetSentErrorMessage(true);
-            return false;
-        }
-        if (!master->HaveBot())
+        if (BotDataMgr::GetOwnedBotsCount(master->GetGUID()) == 0)
         {
             handler->PSendSysMessage("%s has no NpcBots!", master->GetName().c_str());
             handler->SetSentErrorMessage(true);
             return false;
         }
 
+        BotMgr* mgr = master->GetBotMgr();
+        if (!mgr)
+            mgr = new BotMgr(master);
+
         std::vector<ObjectGuid> guidvec;
         BotDataMgr::GetNPCBotGuidsByOwner(guidvec, master->GetGUID());
-        BotMap const* map = master->GetBotMgr()->GetBotMap();
+        BotMap const* map = mgr->GetBotMap();
         guidvec.erase(std::remove_if(std::begin(guidvec), std::end(guidvec),
             [bmap = map](ObjectGuid guid) { return bmap->find(guid) != bmap->end(); }
         ), std::end(guidvec));
@@ -2179,7 +2178,7 @@ public:
     {
         Player const* owner = handler->GetSession()->GetPlayer();
         Unit const* u = owner->GetSelectedUnit();
-        if (!owner->HaveBot() || (!u && !botname))
+        if ((!u && !botname) || BotDataMgr::GetOwnedBotsCount(owner->GetGUID()) == 0)
         {
             handler->SendSysMessage(".npcbot command rebind [#name]");
             handler->SendSysMessage("Re-binds selected/named unbound npcbot");
@@ -2187,8 +2186,12 @@ public:
             return false;
         }
 
+        BotMgr* mgr = owner->GetBotMgr();
+        if (!mgr)
+            mgr = new BotMgr(const_cast<Player*>(owner));
+
         Creature const* cre = (u && u->GetTypeId() == TYPEID_UNIT) ? u->ToCreature() : BotDataMgr::FindBot(*botname, owner->GetSession()->GetSessionDbLocaleIndex());
-        if (!cre || !cre->IsNPCBot() || owner->GetBotMgr()->GetBot(cre->GetGUID()) ||
+        if (!cre || !cre->IsNPCBot() || mgr->GetBot(cre->GetGUID()) ||
             !cre->GetBotAI()->HasBotCommandState(BOT_COMMAND_UNBIND) ||
             BotDataMgr::SelectNpcBotData(cre->GetEntry())->owner != owner->GetGUID().GetCounter())
         {
@@ -2197,7 +2200,7 @@ public:
             return false;
         }
 
-        if (owner->GetBotMgr()->RebindBot(const_cast<Creature*>(cre)) != BOT_ADD_SUCCESS)
+        if (mgr->RebindBot(const_cast<Creature*>(cre)) != BOT_ADD_SUCCESS)
         {
             handler->SendSysMessage("Failed to re-bind bot for some reason!");
             handler->SetSentErrorMessage(true);
@@ -2360,6 +2363,10 @@ public:
         BotMgr* mgr = owner->GetBotMgr();
         if (!mgr)
             mgr = new BotMgr(owner);
+
+        ObjectGuid::LowType guidlow = owner->GetGUID().GetCounter();
+        BotDataMgr::UpdateNpcBotData(bot->GetEntry(), NPCBOT_UPDATE_OWNER, &guidlow);
+        bot->GetBotAI()->ReinitOwner();
 
         if (mgr->AddBot(bot) == BOT_ADD_SUCCESS)
         {
