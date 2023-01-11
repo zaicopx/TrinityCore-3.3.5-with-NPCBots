@@ -1066,23 +1066,7 @@ void bot_ai::MoveToSendPosition(uint32 point_id)
 {
     ASSERT(point_id < MAX_SEND_POINTS);
 
-    Position const& mpos = sendpos[point_id];
-
-    EventRemoveBotAwaitState(BOT_AWAIT_SEND);
-    if (me->GetExactDist(mpos) <= 70.f && me->CanFreeMove())
-    {
-        SetBotCommandState(BOT_COMMAND_STAY);
-        BotMovement(BOT_MOVE_POINT, &mpos, nullptr, false);
-        if (botPet && botPet->CanFreeMove())
-        {
-            botPet->GetBotPetAI()->SetBotCommandState(BOT_COMMAND_STAY);
-            botPet->GetMotionMaster()->MovePoint(me->GetMapId(), mpos, false);
-        }
-        sendlastpos.Relocate(me);
-        BotWhisper("Moving to position!");
-    }
-    else
-        BotWhisper("Position is too far away!");
+    MoveToSendPosition(sendpos[point_id]);
 }
 void bot_ai::MarkSendPosition(uint32 point_id)
 {
