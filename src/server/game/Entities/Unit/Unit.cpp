@@ -188,6 +188,10 @@ DamageInfo::DamageInfo(SpellNonMeleeDamage const& spellNonMeleeDamage, DamageEff
         m_hitMask |= PROC_HIT_BLOCK;
     if (spellNonMeleeDamage.absorb)
         m_hitMask |= PROC_HIT_ABSORB;
+
+    //npcbot: override spellInfo
+    const_cast<SpellInfo const*&>(m_spellInfo) = m_spellInfo->TryGetSpellInfoOverride(m_attacker);
+    //end npcbot
 }
 
 void DamageInfo::ModifyDamage(int32 amount)
@@ -1169,6 +1173,10 @@ void Unit::DealSpellDamage(SpellNonMeleeDamage const* damageInfo, bool durabilit
         TC_LOG_DEBUG("entities.unit", "Unit::DealSpellDamage has wrong damageInfo->SpellID: %u", damageInfo->SpellID);
         return;
     }
+
+    //npcbot: override spellInfo
+    spellProto = spellProto->TryGetSpellInfoOverride(damageInfo->attacker);
+    //end npcbot
 
     // Call default DealDamage
     CleanDamage cleanDamage(damageInfo->cleanDamage, damageInfo->absorb, BASE_ATTACK, MELEE_HIT_NORMAL);
@@ -6652,7 +6660,13 @@ void Unit::SendEnergizeSpellLog(Unit* victim, uint32 spellId, int32 damage, Powe
 void Unit::EnergizeBySpell(Unit* victim, uint32 spellId, int32 damage, Powers powerType)
 {
     if (SpellInfo const* info = sSpellMgr->GetSpellInfo(spellId))
+    {
+        //npcbot: override spellInfo
+        info = info->TryGetSpellInfoOverride(this);
+        //end npcbot
+
         EnergizeBySpell(victim, info, damage, powerType);
+    }
 }
 
 void Unit::EnergizeBySpell(Unit* victim, SpellInfo const* spellInfo, int32 damage, Powers powerType)
@@ -12394,6 +12408,10 @@ Aura* Unit::AddAura(uint32 spellId, Unit* target)
     if (!spellInfo)
         return nullptr;
 
+    //npcbot: override spellInfo
+    spellInfo = spellInfo->TryGetSpellInfoOverride(this);
+    //end npcbot
+
     return AddAura(spellInfo, MAX_EFFECT_MASK, target);
 }
 
@@ -12539,6 +12557,11 @@ int32 Unit::CalculateAOEAvoidance(int32 damage, uint32 schoolMask, ObjectGuid co
 float Unit::MeleeSpellMissChance(Unit const* victim, WeaponAttackType attType, int32 skillDiff, uint32 spellId) const
 {
     SpellInfo const* spellInfo = spellId ? sSpellMgr->GetSpellInfo(spellId) : nullptr;
+
+    //npcbot: override spellInfo
+    spellInfo = spellInfo ? spellInfo->TryGetSpellInfoOverride(this) : spellInfo;
+    //end npcbot
+
     if (spellInfo && spellInfo->HasAttribute(SPELL_ATTR7_CANT_MISS))
         return 0.f;
 

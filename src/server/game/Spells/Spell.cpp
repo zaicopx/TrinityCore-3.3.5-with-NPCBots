@@ -503,7 +503,12 @@ class TC_GAME_API SpellEvent : public BasicEvent
 };
 
 Spell::Spell(WorldObject* caster, SpellInfo const* info, TriggerCastFlags triggerFlags, ObjectGuid originalCasterGUID) :
+//npcbot: override spellInfo
+/*
 m_spellInfo(sSpellMgr->GetSpellForDifficultyFromSpell(info, caster)),
+*/
+m_spellInfo(sSpellMgr->GetSpellForDifficultyFromSpell(info, caster)->TryGetSpellInfoOverride(caster)),
+//end npcbot
 m_caster((info->HasAttribute(SPELL_ATTR6_CAST_BY_CHARMER) && caster->GetCharmerOrOwner()) ? caster->GetCharmerOrOwner() : caster)
 , m_spellValue(new SpellValue(m_spellInfo)), _spellEvent(nullptr)
 {
@@ -1644,7 +1649,13 @@ void Spell::SelectImplicitTrajTargets(SpellEffectInfo const& spellEffectInfo, Sp
     // limit max range to 300 yards, sometimes triggered spells can have 50000yds
     float bestDist = m_spellInfo->GetMaxRange(false);
     if (SpellInfo const* triggerSpellInfo = sSpellMgr->GetSpellInfo(spellEffectInfo.TriggerSpell))
+    {
+        //npcbot: override spellInfo
+        triggerSpellInfo = triggerSpellInfo->TryGetSpellInfoOverride(GetCaster());
+        //end npcbot
+
         bestDist = std::min(std::max(bestDist, triggerSpellInfo->GetMaxRange(false)), std::min(dist2d, 300.0f));
+    }
 
     // GameObjects don't cast traj
     Unit* unitCaster = ASSERT_NOTNULL(m_caster->ToUnit());

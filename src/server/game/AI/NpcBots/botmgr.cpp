@@ -270,8 +270,6 @@ void BotMgr::LoadConfig(bool reload)
         TC_LOG_ERROR("scripts", "BotMgr::LoadConfig: NoDPSTargetIconMask intersects with dps targets flags 0x%02X! Removed, new mask: 0x%02X",
             uint32(interFlags), uint32(_noDpsTargetIconFlags));
     }
-
-    bot_ai::InitBotCustomSpells();
 }
 
 uint8 BotMgr::GetNpcBotsCount() const

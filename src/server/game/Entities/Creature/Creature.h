@@ -444,8 +444,6 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         Item* GetBotEquips(uint8 slot) const;
         Item* GetBotEquipsByGuid(ObjectGuid itemGuid) const;
         float GetBotAverageItemLevel() const;
-
-        static bool IsBotCustomSpell(uint32 spellId);
         //End NPCBots
 
     protected:

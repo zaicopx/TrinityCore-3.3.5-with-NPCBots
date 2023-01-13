@@ -1,4 +1,5 @@
 #include "botdatamgr.h"
+#include "botspell.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "GroupMgr.h"
@@ -46,6 +47,8 @@ void BotDataMgr::LoadNpcBots(bool spawn)
     uint32 botoldMSTime = getMSTime();
 
     TC_LOG_INFO("server.loading", "Starting NpcBot system...");
+
+    GenerateBotCustomSpells();
 
     Field* field;
     uint8 index;

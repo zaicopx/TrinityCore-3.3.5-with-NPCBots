@@ -5074,6 +5074,10 @@ void AuraEffect::HandlePeriodicTriggerSpellAuraTick(Unit* target, Unit* caster) 
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(caster);
+        //end npcbot
+
         if (Unit* triggerCaster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? caster : target)
         {
             CastSpellExtraArgs args(this);
@@ -5099,6 +5103,10 @@ void AuraEffect::HandlePeriodicTriggerSpellWithValueAuraTick(Unit* target, Unit*
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(caster);
+        //end npcbot
+
         if (Unit* triggerCaster = triggeredSpellInfo->NeedsToBeTriggeredByCaster(m_spellInfo) ? caster : target)
         {
             CastSpellExtraArgs args(this);
@@ -5676,6 +5684,10 @@ void AuraEffect::HandleProcTriggerSpellAuraProc(AuraApplication* aurApp, ProcEve
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
         TC_LOG_DEBUG("spells.aura.effect", "AuraEffect::HandleProcTriggerSpellAuraProc: Triggering spell %u from aura %u proc", triggeredSpellInfo->Id, GetId());
+        
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(aurApp->GetBase()->GetCaster());
+        //end npcbot
 
         //npcbot
         Aura const* triggeredByAura = aurApp->GetBase();
@@ -5736,6 +5748,10 @@ void AuraEffect::HandleProcTriggerSpellWithValueAuraProc(AuraApplication* aurApp
 
     if (SpellInfo const* triggeredSpellInfo = sSpellMgr->GetSpellInfo(triggerSpellId))
     {
+        //npcbot: override spellInfo
+        triggeredSpellInfo = triggeredSpellInfo->TryGetSpellInfoOverride(aurApp->GetBase()->GetCaster());
+        //end npcbot
+
         CastSpellExtraArgs args(this);
         args.AddSpellMod(SPELLVALUE_BASE_POINT0, GetAmount());
         triggerCaster->CastSpell(triggerTarget, triggerSpellId, args);
