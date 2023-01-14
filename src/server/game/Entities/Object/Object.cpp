@@ -2920,20 +2920,15 @@ SpellCastResult WorldObject::CastSpell(CastSpellTargetArg const& targets, uint32
         return SPELL_FAILED_SPELL_UNAVAILABLE;
     }
 
+    //npcbot: try override
+    info = info->TryGetSpellInfoOverride(this);
+    //end npcbot
+
     if (!targets.Targets)
     {
         TC_LOG_ERROR("entities.unit", "CastSpell: Invalid target passed to spell cast %u by %s", spellId, GetGUID().ToString().c_str());
         return SPELL_FAILED_BAD_TARGETS;
     }
-
-    //npcbot
-    if (Creature::IsBotCustomSpell(spellId) && !(ToCreature() && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet())))
-    {
-        TC_LOG_ERROR("entities.unit", "CastSpell: NpcBot system custom spell %u by caster: %s), aborted. Please report",
-            spellId, GetGUID().ToString().c_str());
-        return SPELL_FAILED_SPELL_UNAVAILABLE;
-    }
-    //end npcbot
 
     Spell* spell = new Spell(this, info, args.TriggerFlags, args.OriginalCaster);
     for (auto const& pair : args.SpellValueOverrides)
