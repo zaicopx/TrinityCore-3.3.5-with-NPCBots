@@ -1113,9 +1113,9 @@ void GenerateBotCustomSpells()
 
     sinfo->_effects[0].BasePoints = 15;
     sinfo->_effects[0].DieSides = 9;
-    sinfo->_effects[0].BonusMultiplier = 0.5f;
+    sinfo->_effects[0].BonusMultiplier = 0.75f;
     sinfo->_effects[0].DamageMultiplier = 1.f;
-    sinfo->_effects[0].RealPointsPerLevel = 12.f;
+    sinfo->_effects[0].RealPointsPerLevel = 8.f;
     sinfo->_effects[0].ValueMultiplier = 1.f;
     //29) END SHADOW BOLT (MAIN_ATTACK)
 
@@ -1177,7 +1177,7 @@ void GenerateBotCustomSpells()
 
     sinfo->_effects[0].ApplyAuraName = SPELL_AURA_MOD_ATTACKSPEED;
     sinfo->_effects[0].BasePoints = 75;
-    sinfo->_effects[1].Amplitude = 1000;
+    sinfo->_effects[1].Amplitude = 3000;
     sinfo->_effects[1].BasePoints = 1;
     //31) END UNHOLY FRENZY
 
