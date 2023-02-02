@@ -412,7 +412,7 @@ public:
 
             //Position pos;
 
-            Creature* myPet = me->SummonCreature(entry, *sPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, std::chrono::milliseconds(2000));
+            Creature* myPet = me->SummonCreature(entry, *sPos, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2s);
             //me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 0, 2, me->GetOrientation());
             //myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreator(master);

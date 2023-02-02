@@ -269,7 +269,7 @@ public:
             Position pos;
 
             //water elemetal 1 minute duration
-            Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, std::chrono::minutes(IAmFree() ? 60 : 1));
+            Creature* myPet = me->SummonCreature(entry, *me, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 5s);
             me->GetNearPoint(myPet, pos.m_positionX, pos.m_positionY, pos.m_positionZ, 2, me->GetOrientation());
             myPet->GetMotionMaster()->MovePoint(me->GetMapId(), pos);
             myPet->SetCreator(master);
