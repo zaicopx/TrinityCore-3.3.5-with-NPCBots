@@ -6938,7 +6938,7 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
             UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, victim);
         }
         //npcbot: honor for bots
-        else if (victim->ToCreature()->IsNPCBot() && !victim->ToCreature()->IsTempBot())
+        else if (victim->IsNPCBot() && !victim->ToCreature()->IsTempBot())
         {
             Creature const* bot = victim->ToCreature();
 
