@@ -577,7 +577,7 @@ void Aura::_ApplyForTarget(Unit* target, Unit* caster, AuraApplication* auraApp)
         }
     }
     //npcbot: infinity cd for bots
-    if (caster && m_spellInfo->IsCooldownStartedOnEvent() && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+    if (caster && m_spellInfo->IsCooldownStartedOnEvent() && caster->IsNPCBot())
         caster->ToCreature()->AddBotSpellCooldown(m_spellInfo->Id, std::numeric_limits<uint32>::max());
     //end npcbot
 }
@@ -610,7 +610,7 @@ void Aura::_UnapplyForTarget(Unit* target, Unit* caster, AuraApplication* auraAp
         caster->GetSpellHistory()->SendCooldownEvent(GetSpellInfo());
 
     //npcbot: release cd state for bots
-    if (caster && m_spellInfo->IsCooldownStartedOnEvent() && caster->GetTypeId() == TYPEID_UNIT && caster->ToCreature()->IsNPCBot())
+    if (caster && m_spellInfo->IsCooldownStartedOnEvent() && caster->IsNPCBot())
         caster->ToCreature()->ReleaseBotSpellCooldown(m_spellInfo->Id);
     //end npcbot
 }
@@ -963,7 +963,7 @@ uint8 Aura::CalcMaxCharges(Unit* caster) const
         maxProcCharges = procEntry->Charges;
 
     //npcbot: override spell proc
-    if (caster && caster->IsCreature() && caster->ToCreature()->IsNPCBot())
+    if (caster && caster->IsNPCBot())
     {
         if (SpellProcEntry const* procOverride = GetBotSpellProceEntryOverride(GetId()))
             maxProcCharges = procOverride->Charges;
@@ -2026,7 +2026,7 @@ void Aura::PrepareProcToTrigger(AuraApplication* aurApp, ProcEventInfo& eventInf
 
     //npcbot: override spell proc
     Unit const* caster = aurApp && aurApp->GetBase()->GetCasterGUID().IsCreature() ? aurApp->GetBase()->GetCaster() : nullptr;
-    if (caster && caster->IsCreature() && caster->ToCreature()->IsNPCBot())
+    if (caster && caster->IsNPCBot())
     {
         if (SpellProcEntry const* procOverride = GetBotSpellProceEntryOverride(GetId()))
             procEntry = procOverride;
@@ -2045,7 +2045,7 @@ uint8 Aura::GetProcEffectMask(AuraApplication* aurApp, ProcEventInfo& eventInfo,
 
     //npcbot: override spell proc
     Unit const* caster = aurApp && aurApp->GetBase()->GetCasterGUID().IsCreature() ? aurApp->GetBase()->GetCaster() : nullptr;
-    if (caster && caster->IsCreature() && caster->ToCreature()->IsNPCBot())
+    if (caster && caster->IsNPCBot())
     {
         if (SpellProcEntry const* procOverride = GetBotSpellProceEntryOverride(GetId()))
             procEntry = procOverride;

@@ -7100,7 +7100,7 @@ bool Player::RewardHonor(Unit* victim, uint32 groupsize, int32 honor, bool pvpto
 			}
         }
         //npcbot: honor for bots
-        else if (victim->ToCreature()->IsNPCBot() && !victim->ToCreature()->IsTempBot())
+        else if (victim->IsNPCBot() && !victim->ToCreature()->IsTempBot())
         {
             Creature const* bot = victim->ToCreature();
 

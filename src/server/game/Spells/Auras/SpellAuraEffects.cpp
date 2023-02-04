@@ -1847,7 +1847,7 @@ void AuraEffect::HandleAuraModShapeshift(AuraApplication const* aurApp, uint8 mo
             case FORM_BERSERKERSTANCE:
             {
                 //npcbot: skip this, handled inside class ai
-                if (target->GetTypeId() == TYPEID_UNIT && target->ToCreature()->IsNPCBot())
+                if (target->IsNPCBot())
                     break;
                 //end npcbot
                 uint32 Rage_val = 0;

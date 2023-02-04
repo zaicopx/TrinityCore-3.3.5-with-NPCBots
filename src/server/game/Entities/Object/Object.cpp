@@ -1014,7 +1014,7 @@ void WorldObject::setActive(bool on)
         return;
 
     //npcbot: bots should never be removed from active
-    if (on == false && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (on == false && IsNPCBot())
         return;
     //end npcbot
 
@@ -1670,7 +1670,7 @@ bool WorldObject::CanDetect(WorldObject const* obj, bool ignoreStealth, bool che
     WorldObject const* seer = this;
 
     //npcbot: master's invisibility should not affect bots' sight
-    if (!(GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot()))
+    if (!IsNPCBot())
     //end npcbot
     // Pets don't have detection, they use the detection of their masters
     if (Unit const* thisUnit = ToUnit())
@@ -1968,7 +1968,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
             break;
         case UNIT_MASK_TOTEM:
             //npcbot: totem emul step 1
-            if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+            if (summoner && summoner->IsNPCBot())
                 summon = new Totem(properties, summoner->ToCreature()->GetBotOwner());
             else
             //end npcbot
@@ -1986,7 +1986,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     }
 
     //npcbot: totem emul step 2
-    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+    if (summoner && summoner->IsNPCBot())
         summon->SetCreatorGUID(summoner->GetGUID()); // see TempSummon::InitStats()
     //end npcbot
 
@@ -2002,7 +2002,7 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
     summon->InitSummon();
 
     //npcbot: totem emul step 3
-    if (summoner && summoner->GetTypeId() == TYPEID_UNIT && summoner->ToCreature()->IsNPCBot())
+    if (summoner && summoner->IsNPCBot())
         summoner->ToCreature()->OnBotSummon(summon);
     //end npcbot
 
@@ -2341,7 +2341,7 @@ float WorldObject::ApplyEffectModifiers(SpellInfo const* spellInfo, uint8 effInd
     }
 
     //npcbot: handle effect mods
-    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (IsNPCBot())
         ToCreature()->ApplyCreatureEffectMods(spellInfo, effIndex, value);
     //end npcbot
 
@@ -2352,7 +2352,7 @@ int32 WorldObject::CalcSpellDuration(SpellInfo const* spellInfo) const
 {
     uint8 comboPoints = 0;
     //npcbot
-    if (ToCreature() && ToCreature()->IsNPCBot())
+    if (IsNPCBot())
         comboPoints = ToCreature()->GetCreatureComboPoints();
     else
     //npcbot: combo points support for spell duration (vehicle)
@@ -2360,7 +2360,7 @@ int32 WorldObject::CalcSpellDuration(SpellInfo const* spellInfo) const
         spellInfo->GetDuration() != spellInfo->GetMaxDuration())
     {
         Unit const* bot = ToCreature()->GetCharmer();
-        if (bot && bot->ToCreature()->IsNPCBot())
+        if (bot && bot->IsNPCBot())
         {
             comboPoints = bot->ToCreature()->GetCreatureComboPoints();
             //TC_LOG_ERROR("scripts", "CalcSpellDuration bot %s veh spell %u cp %u",
@@ -2488,7 +2488,7 @@ void WorldObject::ModSpellCastTime(SpellInfo const* spellInfo, int32& castTime, 
         modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_CASTING_TIME, castTime, spell);
 
     //npcbot - apply bot spell cast time mods
-    if (castTime > 0 && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (castTime > 0 && IsNPCBot())
         ToCreature()->ApplyCreatureSpellCastTimeMods(spellInfo, castTime);
     //end npcbot
 
@@ -2518,7 +2518,7 @@ void WorldObject::ModSpellDurationTime(SpellInfo const* spellInfo, int32& durati
         modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_CASTING_TIME, duration, spell);
 
     //npcbot - apply bot spell cast time mods
-    if (duration > 0 && GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (duration > 0 && IsNPCBot())
         ToCreature()->ApplyCreatureSpellCastTimeMods(spellInfo, duration);
     //end npcbot
 
@@ -2591,7 +2591,7 @@ SpellMissInfo WorldObject::MagicSpellHitResult(Unit* victim, SpellInfo const* sp
         HitChance += int32(unit->m_modSpellHitChance * 100.0f);
 
     //npcbot: spell hit chance bonus
-    if (GetTypeId() == TYPEID_UNIT && ToCreature()->IsNPCBot())
+    if (IsNPCBot())
         HitChance -= int32(ToCreature()->GetCreatureMissChance() * 100.f);
     //end npcbot
 
@@ -3018,8 +3018,7 @@ bool WorldObject::IsValidAttackTarget(WorldObject const* target, SpellInfo const
     //npcbot: CvC case fix for bots, still a TODO
     if (unit && unitTarget && !unit->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
         !unitTarget->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        ((GetTypeId() == TYPEID_UNIT && (ToCreature()->IsNPCBot() || ToCreature()->IsNPCBotPet())) ||
-        (target->GetTypeId() == TYPEID_UNIT && (target->ToCreature()->IsNPCBot() || target->ToCreature()->IsNPCBotPet()))))
+        (IsNPCBotOrPet() || target->IsNPCBotOrPet()))
         return GetReactionTo(target) <= REP_NEUTRAL || target->GetReactionTo(this) <= REP_NEUTRAL;
     //end npcbot
 

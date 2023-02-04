@@ -504,7 +504,7 @@ void Spell::EffectSchoolDMG()
                     damage += int32(CalculatePct(unitCaster->ToPlayer()->GetComboPoints() * ap, 7));
                 }
                 //npcbot: Ferocious Bite support
-                else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot() && (m_spellInfo->SpellFamilyFlags[0] & 0x800000) && m_spellInfo->SpellVisual[0] == 6587)
+                else if (unitCaster->IsNPCBot() && (m_spellInfo->SpellFamilyFlags[0] & 0x800000) && m_spellInfo->SpellVisual[0] == 6587)
                 {
                     // converts each extra point of energy into ($f1+$AP/410) additional damage
                     float ap = unitCaster->GetTotalAttackPowerValue(BASE_ATTACK);
@@ -577,7 +577,7 @@ void Spell::EffectSchoolDMG()
                         }
                     }
                     //npcbot: Envenom support
-                    else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    else if (unitCaster->IsNPCBot())
                     {
                         // consume from stack dozes not more that have combo-points
                         if (uint8 combo = unitCaster->ToCreature()->GetCreatureComboPoints())
@@ -639,7 +639,7 @@ void Spell::EffectSchoolDMG()
                         }
                     }
                     //npcbot: Eviscerate support
-                    else if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    else if (unitCaster->IsNPCBot())
                     {
                         if (uint32 combo = unitCaster->ToCreature()->GetCreatureComboPoints())
                         {
@@ -703,7 +703,7 @@ void Spell::EffectSchoolDMG()
                         damage += int32(caster->GetAmmoDPS() * caster->GetAttackTime(RANGED_ATTACK) * 0.001f);
                     }
                     //npcbot: calculate bot weapon damage
-                    if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                    if (unitCaster->IsNPCBot())
                     {
                         if (Item* item = unitCaster->ToCreature()->GetBotEquips(2/*BOT_SLOT_RANGED*/))
                         {
@@ -3245,7 +3245,7 @@ void Spell::EffectWeaponDmg()
 
                 //npcbot: handle bot weapons
                 // 50% more damage with daggers
-                if (unitCaster->GetTypeId() == TYPEID_UNIT && unitCaster->ToCreature()->IsNPCBot())
+                if (unitCaster->IsNPCBot())
                     if (Item const* weapon = unitCaster->ToCreature()->GetBotEquips(m_attackType))
                         if (weapon->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_DAGGER)
                             totalDamagePercentMod *= 1.5f;
