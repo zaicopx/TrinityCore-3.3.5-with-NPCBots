@@ -5898,6 +5898,7 @@ void bot_ai::InitSpellMap(uint32 basespell, bool forceadd, bool forwardRank)
         TC_LOG_ERROR("entities.player", "bot_ai::InitSpellMap(): No SpellInfo found for base spell %u", basespell);
         return; //invalid spell id
     }
+    info = info->TryGetSpellInfoOverride(me);
 
     uint8 lvl = me->GetLevel();
     uint32 spellId = forceadd ? basespell : 0;
@@ -6664,16 +6665,19 @@ bool bot_ai::Wait()
 void bot_ai::ApplyBotDamageMultiplierMelee(uint32& damage, CalcDamageInfo& damageinfo) const
 {
     //WHITE ATTACKS damage bonus
+    damage *= BotMgr::GetBotDamageModByClass(GetBotClass());
     ApplyClassDamageMultiplierMelee(damage, damageinfo);
 }
 void bot_ai::ApplyBotDamageMultiplierMelee(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool iscrit) const
 {
     //MELEE ABILITIES damage bonus (DMG_CLASS != DMG_CLASS_MAGIC)
+    damage *= BotMgr::GetBotDamageModByClass(GetBotClass());
     ApplyClassDamageMultiplierMeleeSpell(damage, damageinfo, spellInfo, attackType, iscrit);
 }
 void bot_ai::ApplyBotDamageMultiplierSpell(int32& damage, SpellNonMeleeDamage& damageinfo, SpellInfo const* spellInfo, WeaponAttackType attackType, bool iscrit) const
 {
     //DAMAGE SPELLS damage bonus (DMG_CLASS_MAGIC)
+    damage *= BotMgr::GetBotDamageModByClass(GetBotClass());
     ApplyClassDamageMultiplierSpell(damage, damageinfo, spellInfo, attackType, iscrit);
 }
 void bot_ai::ApplyBotDamageMultiplierHeal(Unit const* victim, float& heal, SpellInfo const* spellInfo, DamageEffectType damagetype, uint32 stack) const
