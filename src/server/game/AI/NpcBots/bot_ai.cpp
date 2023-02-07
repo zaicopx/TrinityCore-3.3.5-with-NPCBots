@@ -5898,6 +5898,7 @@ void bot_ai::InitSpellMap(uint32 basespell, bool forceadd, bool forwardRank)
         TC_LOG_ERROR("entities.player", "bot_ai::InitSpellMap(): No SpellInfo found for base spell %u", basespell);
         return; //invalid spell id
     }
+    info = info->TryGetSpellInfoOverride(me);
 
     uint8 lvl = me->GetLevel();
     uint32 spellId = forceadd ? basespell : 0;
