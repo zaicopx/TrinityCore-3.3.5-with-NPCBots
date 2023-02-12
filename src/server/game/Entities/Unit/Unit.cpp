@@ -3201,6 +3201,11 @@ void Unit::InterruptSpell(CurrentSpellTypes spellType, bool withDelayed, bool wi
             if (GetTypeId() == TYPEID_PLAYER)
                 ToPlayer()->SendAutoRepeatCancel(this);
 
+        //npcbot
+        if (IsNPCBot())
+            BotMgr::OnBotSpellInterrupt(this, spellType);
+        //end npcbot
+
         if (spell->getState() != SPELL_STATE_FINISHED)
             spell->cancel();
         else
