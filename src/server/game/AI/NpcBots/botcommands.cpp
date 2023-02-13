@@ -19,6 +19,7 @@
 #include "ScriptMgr.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "Spell.h"
 #include "Vehicle.h"
 #include "World.h"
 #include "WorldDatabase.h"
@@ -306,6 +307,7 @@ public:
             { "spellvisual",HandleNpcBotDebugSpellVisualCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_VISUAL,       Console::No  },
             { "states",     HandleNpcBotDebugStatesCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
             { "names",      HandleNpcBotDebugNamesCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
+            { "spells",     HandleNpcBotDebugSpellsCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
         static ChatCommandTable npcbotSetCommandTable =
@@ -482,9 +484,30 @@ public:
         return true;
     }
 
-    static bool HandleNpcBotDebugStatesCommand(ChatHandler* handler)
+    static bool HandleNpcBotDebugSpellsCommand(ChatHandler* handler)
     {
         Unit* target = handler->getSelectedUnit();
+        if (!target)
+        {
+            handler->SendSysMessage("No target selected");
+            return true;
+        }
+
+        std::ostringstream ostr;
+        ostr << "Listing spells for " << target->GetName() << ':';
+        for (uint8 i = 0; i < CURRENT_MAX_SPELL; ++i)
+        {
+            if (Spell const* curSpell = target->GetCurrentSpell(CurrentSpellTypes(i)))
+                ostr << "\nSpell type " << uint32(i) << ":\n" << curSpell->GetDebugInfo();
+        }
+
+        handler->SendSysMessage(ostr.str().c_str());
+        return true;
+    }
+
+    static bool HandleNpcBotDebugStatesCommand(ChatHandler* handler)
+    {
+        Unit const* target = handler->getSelectedUnit();
         if (!target)
         {
             handler->SendSysMessage("No target selected");
