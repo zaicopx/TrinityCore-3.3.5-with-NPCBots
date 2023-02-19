@@ -5549,7 +5549,7 @@ uint32 bot_ai::GetItemSpellCooldown(uint32 spellId) const
             ItemTemplate const* proto = item->GetTemplate();
             for (auto const& itemSpell : proto->Spells)
             {
-                if (itemSpell.SpellId == spellId)
+                if (itemSpell.SpellId == decltype(itemSpell.SpellId)(spellId))
                     return itemSpell.SpellCooldown;
             }
         }
