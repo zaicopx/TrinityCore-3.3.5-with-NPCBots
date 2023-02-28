@@ -1835,6 +1835,11 @@ uint32 Spell::GetSearcherTypeMask(SpellTargetObjectTypes objType, ConditionConta
     }
 
     if (m_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_PLAYERS))
+        //npcbot: do not exclude creatures, see WorldObjectSpellNearbyTargetCheck, WorldObjectSpellAreaTargetCheck
+        if (retMask & GRID_MAP_TYPE_MASK_CREATURE)
+            retMask &= GRID_MAP_TYPE_MASK_CORPSE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CREATURE;
+        else
+        //end npcbot
         retMask &= GRID_MAP_TYPE_MASK_CORPSE | GRID_MAP_TYPE_MASK_PLAYER;
     if (m_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_GHOSTS))
         retMask &= GRID_MAP_TYPE_MASK_PLAYER;
@@ -8442,6 +8447,11 @@ WorldObjectSpellNearbyTargetCheck::WorldObjectSpellNearbyTargetCheck(float range
 
 bool WorldObjectSpellNearbyTargetCheck::operator()(WorldObject* target)
 {
+    //npcbot: custom check 1 for targeting bots by spells with SPELL_ATTR3_ONLY_TARGET_PLAYERS
+    if (_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_PLAYERS) && target->GetTypeId() == TYPEID_UNIT && !target->IsNPCBot())
+        return false;
+    //end npcbot
+
     float dist = target->GetDistance(*_position);
     if (dist < _range && WorldObjectSpellTargetCheck::operator ()(target))
     {
@@ -8466,6 +8476,11 @@ bool WorldObjectSpellAreaTargetCheck::operator()(WorldObject* target) const
     }
     else
     {
+        //npcbot: custom check 2 for targeting bots by spells with SPELL_ATTR3_ONLY_TARGET_PLAYERS
+        if (_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_PLAYERS) && target->GetTypeId() == TYPEID_UNIT && !target->IsNPCBot())
+            return false;
+        //end npcbot
+
         bool isInsideCylinder = target->IsWithinDist2d(_position, _range) && std::abs(target->GetPositionZ() - _position->GetPositionZ()) <= _range;
         if (!isInsideCylinder)
             return false;
