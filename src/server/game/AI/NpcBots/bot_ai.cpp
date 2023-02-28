@@ -5604,6 +5604,7 @@ void bot_ai::CheckUsableItems(uint32 diff)
                         castTarget = me->GetNextRandomRaidMemberOrPet(10.f);
                         if (!castTarget)
                             castTarget = me;
+                        break;
                     case BOT_ITEM_USE_SPELL_TARGET_NONE:
                     default:
                         break;
