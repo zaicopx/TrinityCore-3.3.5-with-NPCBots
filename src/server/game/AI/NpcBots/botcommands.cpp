@@ -315,6 +315,7 @@ public:
             { "faction",    HandleNpcBotSetFactionCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_SET_FACTION,        Console::No  },
             { "owner",      HandleNpcBotSetOwnerCommand,            rbac::RBAC_PERM_COMMAND_NPCBOT_SET_OWNER,          Console::No  },
             { "spec",       HandleNpcBotSetSpecCommand,             rbac::RBAC_PERM_COMMAND_NPCBOT_SET_SPEC,           Console::No  },
+            { "wander",     HandleNpcBotSetWanderCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
         static ChatCommandTable npcbotCommandCommandTable =
@@ -1553,6 +1554,22 @@ public:
         bot->GetBotAI()->SetSpec(*spec);
 
         handler->PSendSysMessage("%s's new spec is %u", bot->GetName().c_str(), uint32(*spec));
+        return true;
+    }
+
+    static bool HandleNpcBotSetWanderCommand(ChatHandler* handler)
+    {
+        Player* chr = handler->GetSession()->GetPlayer();
+        Unit* ubot = chr->GetSelectedUnit();
+        if (!ubot || !ubot->IsNPCBot() || !ubot->ToCreature()->IsFreeBot() || ubot->ToCreature()->GetBotAI()->IsWanderer())
+        {
+            handler->SendSysMessage(".npcbot set wander");
+            handler->SendSysMessage("Sets selected free bot to wander mode");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        ubot->ToCreature()->GetBotAI()->SetWanderer();
         return true;
     }
 
