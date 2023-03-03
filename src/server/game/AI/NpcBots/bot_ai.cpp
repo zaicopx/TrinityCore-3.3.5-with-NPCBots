@@ -7020,6 +7020,8 @@ bool bot_ai::OnGossipHello(Player* player, uint32 /*option*/)
     if (me->isMoving())
         me->BotStopMovement();
 
+    evadeDelayTimer = std::max<decltype(evadeDelayTimer)>(evadeDelayTimer, 10000);
+
     uint32 gossipTextId;
     if (!IAmFree())
     {
@@ -7286,6 +7288,11 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
         player->PlayerTalkClass->SendCloseGossip();
         return true;
     }
+
+    if (me->isMoving())
+        me->BotStopMovement();
+
+    evadeDelayTimer = std::max<decltype(evadeDelayTimer)>(evadeDelayTimer, 10000);
 
     uint32 gossipTextId;
     if (!IAmFree())
