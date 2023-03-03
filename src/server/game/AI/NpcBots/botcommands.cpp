@@ -418,6 +418,7 @@ public:
             { "recall",     npcbotRecallCommandTable                                                                                },
             { "kill",       HandleNpcBotKillCommand,                rbac::RBAC_PERM_COMMAND_NPCBOT_KILL,               Console::No  },
             { "suicide",    HandleNpcBotKillCommand,                rbac::RBAC_PERM_COMMAND_NPCBOT_KILL,               Console::No  },
+            { "go",         HandleNpcBotGoCommand,                  rbac::RBAC_PERM_COMMAND_NPCBOT_MOVE,               Console::No  },
             { "sendto",     npcbotSendToCommandTable                                                                                },
             { "distance",   npcbotDistanceCommandTable                                                                              },
             { "order",      npcbotOrderCommandTable                                                                                 },
@@ -1072,6 +1073,42 @@ public:
         return false;
     }
 
+    static bool HandleNpcBotGoCommand(ChatHandler* handler, Optional<uint32> creatureId)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+
+        if (!creatureId)
+        {
+            handler->SendSysMessage(".npcbot go #[ID]");
+            handler->SendSysMessage("Teleports to npcbot's current location");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        Creature const* bot = BotDataMgr::FindBot(*creatureId);
+        if (!bot)
+        {
+            handler->PSendSysMessage("NpcBot %u is not found!", *creatureId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->PSendSysMessage(LANG_APPEARING_AT, bot->GetName().c_str());
+
+        if (player->IsInFlight())
+            player->FinishTaxiFlight();
+        else
+            player->SaveRecallPosition(); // save only in non-flight case
+
+        // to point to see at target with same orientation
+        float x, y, z;
+        bot->GetClosePoint(x, y, z, player->GetCombatReach(), 1.0f);
+
+        player->TeleportTo(bot->GetMapId(), x, y, z, player->GetAbsoluteAngle(bot), TELE_TO_GM_MODE);
+        player->SetPhaseMask(bot->GetPhaseMask(), true);
+        return true;
+    }
+
     static bool HandleNpcBotSendToCommand(ChatHandler* handler, Optional<std::vector<std::string>> names)
     {
         static auto return_syntax = [](ChatHandler* chandler) -> bool {
@@ -1705,6 +1742,13 @@ public:
         if (!bot || !bot->IsNPCBot())
         {
             handler->SendSysMessage("No npcbot selected");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (bot->GetBotAI()->IsWanderer())
+        {
+            handler->SendSysMessage("Cannot delete wanderer npcbot");
             handler->SetSentErrorMessage(true);
             return false;
         }
