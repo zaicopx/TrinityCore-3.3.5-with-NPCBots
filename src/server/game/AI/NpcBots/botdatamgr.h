@@ -12,6 +12,8 @@ class Creature;
 struct EquipmentInfo;
 struct CreatureTemplate;
 
+enum LocaleConstant : uint8;
+
 enum NpcBotDataUpdateType
 {
     NPCBOT_UPDATE_OWNER                 = 1,
@@ -154,9 +156,11 @@ class BotDataMgr
         static std::vector<uint32> GetExistingNPCBotIds();
         static uint8 GetOwnedBotsCount(ObjectGuid owner_guid, uint32 class_mask = 0);
 
-        static void GenerateBotCustomCreatureTemplates();
+        static void GenerateWanderingBots();
         static CreatureTemplate const* GetBotExtraCreatureTemplate(uint32 entry);
         static EquipmentInfo const* GetDummyEquipmentInfo();
+
+        static std::pair<uint8, uint8> GetZoneLevels(uint32 zoneId);
 
         static std::shared_mutex* GetLock();
 

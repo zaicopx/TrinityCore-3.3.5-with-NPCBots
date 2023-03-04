@@ -245,6 +245,7 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
     _ownerGuid = 0;
 
     _wanderer = false;
+    _baseLevel = 0;
 
     opponent = nullptr;
     disttarget = nullptr;
@@ -279,77 +280,6 @@ uint16 bot_ai::Rand() const
 void bot_ai::GenerateRand() const
 {
     __rand = urand(0, IAmFree() ? 100 : 100 + (master->GetNpcBotsCount() - 1) * 2);
-}
-
-constexpr std::pair<uint8, uint8> GetZoneLevels(uint32 zoneId)
-{
-    //Only maps 0 and 1 are covered
-    switch (zoneId)
-    {
-        case 1: // Dun Morogh
-        case 12: // Elwynn Forest
-        case 14: // Durotar
-        case 85: // Tirisfal Glades
-        case 141: // Teldrassil
-        case 215: // Mulgore
-        case 3430: // Eversong Woods
-        case 3524: // Azuremyst Isle
-            return { 1, 14 };
-        case 38: // Loch Modan
-        case 40: // Westfall
-        case 130: // Silverpine Woods
-        case 148: // Darkshore
-        case 3433: // Ghostlands
-        case 3525: // Bloodmyst Isle
-            return { 8, 24 };
-        case 17: // Barrens
-            return { 8, 30 };
-        case 44: // Redridge Mountains
-            return { 13, 30 };
-        case 406: // Stonetalon Mountains
-            return { 13, 32 };
-        case 10: // Duskwood
-        case 11: // Wetlands
-        case 267: // Hillsbrad Foothills
-        case 331: // Ashenvale
-            return { 18, 34 };
-        case 400: // Thousand Needles
-            return { 23, 40 };
-        case 36: // Alterac Mountains
-        case 45: // Arathi Highlands
-        case 405: // Desolace
-            return { 28, 44 };
-        case 33: // Stranglethorn Valley
-            return { 28, 50 };
-        case 3: // Badlands
-        case 8: // Swamp of Sorrows
-        case 15: // Dustwallow Marsh
-            return { 33, 50 };
-        case 47: // Hinterlands
-        case 357: // Feralas
-        case 440: // Tanaris
-            return { 38, 54 };
-        case 4: // Blasted Lands
-        case 16: // Azshara
-        case 51: // Searing Gorge
-            return { 43, 60 };
-        case 490: // Un'Goro Crater
-            return { 45, 60 };
-        case 361: // Felwood
-            return { 46, 60 };
-        case 28: // Western Plaguelands
-        case 46: // Burning Steppes
-            return { 48, 60 };
-        case 41: // Deadwind Pass
-            return { 50, 60 };
-        case 1377: // Silithus
-            return { 53, 60 };
-        case 139: // Eastern Plaguelands
-        case 618: // Winterspring
-            return { 53, 60 }; //63
-        default:
-            return { 0, 0 };
-    }
 }
 
 const std::string& bot_ai::LocalizedNpcText(Player const* forPlayer, uint32 textId)
@@ -2267,40 +2197,47 @@ void bot_ai::SetStats(bool force)
     if (IsTempBot() && !force)
         return;
 
-    uint8 myclass = _botclass;
-    uint8 mylevel = std::min<uint8>(master->GetLevel(), 80);
-    if (force && IsWanderer() && firstspawn) //this only happens once
-    {
-        if (urand(1, 100) <= 10)
-        {
-            switch (me->GetMap()->GetEntry()->ID)
-            {
-                case 0: case 1: mylevel = 60; break;
-                case 530:       mylevel = 70; break;
-                default:        mylevel = 80; break;
-            }
-        }
-        else
-        {
-            auto [zonelevelmin, zonelevelmax] = GetZoneLevels(me->GetZoneId());
-            if (zonelevelmin > 0 && zonelevelmax > 0)
-                mylevel = std::min<uint8>((me->GetEntry() % 10) + urand(zonelevelmin, zonelevelmax), 80);
-            else
-            {
-                switch (me->GetMap()->GetEntry()->ID)
-                {
-                    case 0: case 1: mylevel = urand(41, 60); break;
-                    case 530:       mylevel = urand(61, 70); break;
-                    default:        mylevel = urand(71, 80); break;
-                }
-            }
-        }
-    }
+    shouldUpdateStats = false;
 
+    uint8 myclass = _botclass;
     if (myclass == BOT_CLASS_DRUID && GetBotStance() != BOT_STANCE_NONE)
         myclass = GetBotStance();
 
-    shouldUpdateStats = false;
+    uint8 mylevel = std::min<uint8>(master->GetLevel(), 80);
+    if (IsWanderer())
+    {
+        if (_baseLevel == 0) //this only happens once
+        {
+            if (urand(1, 100) <= 10)
+            {
+                switch (me->GetMap()->GetEntry()->ID)
+                {
+                    case 0: case 1: mylevel = 60; break;
+                    case 530:       mylevel = 70; break;
+                    default:        mylevel = 80; break;
+                }
+            }
+            else
+            {
+                auto [zonelevelmin, zonelevelmax] = BotDataMgr::GetZoneLevels(me->GetZoneId());
+                if (zonelevelmin > 0 && zonelevelmax > 0)
+                    mylevel = std::min<uint8>(4 + (me->GetEntry() % 5) + urand(zonelevelmin, zonelevelmax), 80);
+                else
+                {
+                    switch (me->GetMap()->GetEntry()->ID)
+                    {
+                        case 0: case 1: mylevel = urand(41, 60); break;
+                        case 530:       mylevel = urand(61, 70); break;
+                        default:        mylevel = urand(71, 80); break;
+                    }
+                }
+            }
+            _baseLevel = mylevel;
+        }
+        else
+            mylevel = std::max<uint8>(mylevel, _baseLevel + std::min<uint8>(uint16(_killsCount / std::max<uint8>(mylevel * 5 / 2, 20)), 80));
+    }
+
     /*TC_LOG_ERROR("entities.player", "*etStats(): Updating bot %s, class: %u, race: %u, level %u, master: %s",
         me->GetName().c_str(), myclass, myrace, mylevel, master->GetName().c_str());*/
 
@@ -2314,6 +2251,7 @@ void bot_ai::SetStats(bool force)
             default:                                        break;
         }
     }
+
     mylevel = std::min<uint8>(mylevel, 83);
 
     //Do not remove this code
@@ -2337,6 +2275,9 @@ void bot_ai::SetStats(bool force)
     //LEVEL
     if (me->GetLevel() != mylevel)
     {
+        if (me->GetLevel() > mylevel)
+            UnsummonAll();
+
         me->SetLevel(mylevel);
         force = true; //reinit spells/passives/other
     }
@@ -16352,7 +16293,7 @@ bool bot_ai::GlobalUpdate(uint32 diff)
         Regenerate();
 
     //update flags
-    if (!me->IsInCombat() && !_evadeMode && _atHome)
+    if (!me->IsInCombat() && !_evadeMode && (_atHome || IsWanderer()))
     {
         if (!me->HasNpcFlag(UNIT_NPC_FLAG_GOSSIP) && !HasBotCommandState(BOT_COMMAND_NOGOSSIP))
             me->SetNpcFlag(UNIT_NPC_FLAG_GOSSIP);
@@ -16489,7 +16430,8 @@ bool bot_ai::GlobalUpdate(uint32 diff)
             }
             else
             {
-                if (_botclass == BOT_CLASS_DREADLORD) //classes which don't display weapons
+                //classes which don't display weapons
+                if (_botclass == BOT_CLASS_DREADLORD || _botclass == BOT_CLASS_SPELLBREAKER)
                 {
                     if (me->GetSheath() != SHEATH_STATE_UNARMED)
                         me->SetSheath(SHEATH_STATE_UNARMED);
@@ -16554,7 +16496,19 @@ void bot_ai::UpdateReviveTimer(uint32 diff)
     else
     {
         if (IAmFree())
+        {
+            if (IsWanderer())
+            {
+                WorldSafeLocsEntry const* gy = sObjectMgr->GetClosestGraveyard(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetMapId(),
+                    me->GetFaction() == 1801 ? HORDE : ALLIANCE);
+                if (gy)
+                {
+                    Position safePos(gy->Loc.X, gy->Loc.Y, gy->Loc.Z, me->GetOrientation());
+                    BotMgr::TeleportBot(me, sMapMgr->CreateBaseMap(gy->Continent), &safePos);
+                }
+            }
             BotMgr::ReviveBot(me);
+        }
         else
             if (_reviveTimer > 0)   _reviveTimer = 0;
     }
@@ -16641,13 +16595,14 @@ void bot_ai::Evade()
                 fdx > 100.0f  || fdy > 100.0f  ?   7.0f : 3.0f;
             dx = dx / divider + me->m_positionX;
             dy = dy / divider + me->m_positionY;
-            float z = me->GetMap()->GetHeight(dx, dy, me->m_positionZ);
+            float z = pos.m_positionZ;
+            Position fixedPos;
+            fixedPos.Relocate(dx, dy, z);
+            me->MovePosition(fixedPos, (IsWanderer() ? 50.f : 1.f) * float(rand_norm()), float(rand_norm()) * float(2 * M_PI));
 
             if (z > INVALID_HEIGHT)
             {
-                Position position;
-                position.Relocate(dx, dy, z + 0.1f);
-                BotMovement(BOT_MOVE_POINT, &position);
+                BotMovement(BOT_MOVE_POINT, &fixedPos);
                 farpoint = false;
             }
         }
@@ -16782,14 +16737,16 @@ void bot_ai::GetHomePosition(uint16& mapid, Position* pos) const
 {
     if (IsWanderer())
     {
+        //TODO: get current dest point in wander map
         mapid = me->GetMapId();
         pos->Relocate(me->GetHomePosition());
-        return;
     }
-
-    CreatureData const* data = me->GetCreatureData();
-    mapid = data->mapId;
-    pos->Relocate(data->spawnPoint.GetPositionX(), data->spawnPoint.GetPositionY(), data->spawnPoint.GetPositionZ(), data->spawnPoint.GetOrientation());
+    else
+    {
+        CreatureData const* data = me->GetCreatureData();
+        mapid = data->mapId;
+        pos->Relocate(data->spawnPoint);
+    }
 }
 
 void bot_ai::KillEvents(bool force)

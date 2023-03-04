@@ -34,6 +34,98 @@ bool allBotsLoaded = false;
 
 static EquipmentInfo dummyEqInfo;
 
+class StupidGraph
+{
+public:
+    ~StupidGraph() {
+        //order
+        Tops.clear();
+        Nodes.clear();
+    }
+
+    struct StupidNode : public WorldLocation
+    {
+        StupidNode(uint32 _mapId = MAPID_INVALID, float x = 0.f, float y = 0.f, float z = 0.f, float o = 0.f,
+            uint32 _id = 0, uint8 _minlevel = 0, uint8 _maxlevel = 0, std::string_view _name = "unknown") :
+            WorldLocation(_mapId, x, y, z, o), id(_id), minlevel(_minlevel), maxlevel(_maxlevel), name{ _name } {}
+        StupidNode(uint32 _mapId, Position const& pos, uint32 _id, uint8 _minlevel, uint8 _maxlevel, std::string_view _name) :
+            WorldLocation(_mapId, pos), id(_id), minlevel(_minlevel), maxlevel(_maxlevel), name{ _name } {}
+
+        uint32 id;
+        uint8 minlevel;
+        uint8 maxlevel;
+        std::string_view name;
+
+        std::vector<StupidNode*> connections;
+    };
+
+    std::vector<StupidNode> Nodes;
+    std::vector<StupidNode*> Tops; // single connection nodes
+
+    // debug
+    static constexpr size_t sizeofNode = sizeof(StupidNode);
+} WanderMap;
+
+void FillWanderMap()
+{
+    using NodeType = StupidGraph::StupidNode;
+
+    const float NODE_CONNECTION_DIST_MAX = 400.f;
+
+    const std::array wanderMapIds{ 0u, 1u };
+
+    TC_LOG_INFO("server.loading", "Generating bot wander map...");
+
+    uint32 botoldMSTime = getMSTime();
+
+    GameTeleContainer const& all_teles = sObjectMgr->GetGameTeleMap();
+    WanderMap.Nodes.reserve(all_teles.size());
+
+    for (GameTeleContainer::value_type const& tele_pair : all_teles)
+    {
+        GameTele const& tele = tele_pair.second;
+        if (std::find(std::cbegin(wanderMapIds), std::cend(wanderMapIds), tele.mapId) == wanderMapIds.cend())
+            continue;
+
+        Position pos(tele.position_x, tele.position_y, tele.position_z, tele.orientation);
+        uint32 teleZoneId = sMapMgr->GetZoneId(PHASEMASK_NORMAL, tele.mapId, pos);
+        auto [lvlmin, lvlmax] = BotDataMgr::GetZoneLevels(teleZoneId);
+        if (lvlmin == 0 || lvlmax == 0)
+            continue;
+
+        WanderMap.Nodes.emplace_back(tele.mapId, pos, tele_pair.first, lvlmin, lvlmax, tele.name);
+    }
+
+    for (decltype(WanderMap.Nodes)::iterator it = WanderMap.Nodes.begin(); it != WanderMap.Nodes.end();)
+    {
+        for (NodeType& node2 : WanderMap.Nodes)
+        {
+            if (it->id == node2.id)
+                continue;
+
+            if (it->GetExactDist2d(node2) < NODE_CONNECTION_DIST_MAX)
+                it->connections.emplace_back(&node2);
+        }
+
+        if (it->connections.empty())
+            it = WanderMap.Nodes.erase(it);
+        else
+        {
+            if (it->connections.size() == 1u)
+                WanderMap.Tops.push_back(&*it);
+            ++it;
+        }
+    }
+
+    if (WanderMap.Nodes.empty())
+    {
+        TC_LOG_FATAL("server.loading", "Failed to load wander points: no game_tele points added!");
+        ASSERT(false);
+    }
+
+    TC_LOG_INFO("server.loading", ">> Generated bot wander map with %u nodes (%u tops) in %u ms", WanderMap.Nodes.size(), WanderMap.Tops.size(), GetMSTimeDiffToNow(botoldMSTime));
+}
+
 std::shared_mutex* BotDataMgr::GetLock()
 {
     static std::shared_mutex _lock;
@@ -263,7 +355,7 @@ void BotDataMgr::LoadNpcBots(bool spawn)
 
     allBotsLoaded = true;
 
-    GenerateBotCustomCreatureTemplates();
+    GenerateWanderingBots();
 }
 
 void BotDataMgr::LoadNpcBotGroupData()
@@ -307,13 +399,20 @@ void BotDataMgr::LoadNpcBotGroupData()
     TC_LOG_INFO("server.loading", ">> Loaded %u NPCBot group members in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
-void BotDataMgr::GenerateBotCustomCreatureTemplates()
+void BotDataMgr::GenerateWanderingBots()
 {
     static const uint32 WANDERING_BOTS_COUNT = 5;
 
     TC_LOG_INFO("server.loading", "Spawning wandering bots...");
 
     uint32 oldMSTime = getMSTime();
+
+    if (_botsExtras.size() - _existingBots.size() < WANDERING_BOTS_COUNT)
+    {
+        TC_LOG_FATAL("server.loading", "Trying to generate %u bots but only %u out of %u bots aren't spawned. Aborting!",
+            WANDERING_BOTS_COUNT, _botsExtras.size() - _existingBots.size(), _botsExtras.size());
+        ASSERT(false);
+    }
 
     dummyEqInfo.ItemEntry[0] = 6256; //Fishing Pole
     dummyEqInfo.ItemEntry[2] = 13019;
@@ -325,10 +424,10 @@ void BotDataMgr::GenerateBotCustomCreatureTemplates()
             allowed_classes.push_back(c);
 
     uint32 bot_id = BOT_ENTRY_CREATE_BEGIN - 1;
-    QueryResult result = CharacterDatabase.PQuery("SELECT value FROM worldstates where entry = %u", uint32(BOT_GIVER_ENTRY));
+    QueryResult result = CharacterDatabase.PQuery("SELECT value FROM worldstates WHERE entry = %u", uint32(BOT_GIVER_ENTRY));
     if (!result)
     {
-        TC_LOG_WARN("server.loading", "Next bot id for autogeneration is not found! Using autofind option (client cache may interfere with names)");
+        TC_LOG_WARN("server.loading", "Next bot id for autogeneration is not found! Resetting! (client cache may interfere with names)");
         for (uint32 bot_cid : GetExistingNPCBotIds())
             if (bot_cid > bot_id)
                 bot_id = bot_cid;
@@ -342,33 +441,44 @@ void BotDataMgr::GenerateBotCustomCreatureTemplates()
     ASSERT(bot_id_start > BOT_ENTRY_BEGIN);
 
     CreatureTemplateContainer const& all_templates = sObjectMgr->GetCreatureTemplates();
+    std::vector<uint32> clonedIds;
+    clonedIds.reserve(WANDERING_BOTS_COUNT);
 
-    auto find_bot_creature_template_by_class = [](uint8 b_class, uint32 max_entry) -> CreatureTemplate const* {
+    auto find_bot_creature_template_by_botclass = [&clonedIds](uint8 b_class, uint32 max_entry) -> CreatureTemplate const* {
+        std::vector<CreatureTemplate const*> valid_templates;
         for (uint32 i = BOT_ENTRY_BEGIN; i < max_entry; ++i)
         {
             if (NpcBotExtras const* templateExtras = SelectNpcBotExtras(i))
             {
-                if (templateExtras->bclass == b_class && !BotDataMgr::FindBot(i))
-                    return sObjectMgr->GetCreatureTemplate(i);
+                if (templateExtras->bclass == b_class &&
+                    std::find(std::cbegin(clonedIds), std::cend(clonedIds), i) == clonedIds.cend() &&
+                    !BotDataMgr::FindBot(i))
+                    valid_templates.push_back(sObjectMgr->GetCreatureTemplate(i));
             }
         }
-        return nullptr;
+        return valid_templates.empty() ? nullptr : Trinity::Containers::SelectRandomContainerElement(valid_templates);
     };
 
-    for (uint32 i = 0; i < WANDERING_BOTS_COUNT; ++i)
+    for (int32 i = 0; i < WANDERING_BOTS_COUNT; ++i) // i is unused as value
     {
         while (all_templates.find(++bot_id) != all_templates.end()) {}
 
         uint8 bot_class = Trinity::Containers::SelectRandomContainerElement(allowed_classes);
-        CreatureTemplate const* orig_template = find_bot_creature_template_by_class(bot_class, bot_id_start);
-        ASSERT_NOTNULL(orig_template);
+        CreatureTemplate const* orig_template = find_bot_creature_template_by_botclass(bot_class, bot_id_start);
+        if (!orig_template)
+        {
+            //try again
+            --i;
+            continue;
+        }
 
         CreatureTemplate& bot_template = _botsWanderCreatureTemplates[bot_id];
         //copy all fields
         //pointers to non-const objects: QueryData[TOTAL_LOCALES]
         bot_template = *orig_template;
         bot_template.Entry = bot_id;
-        bot_template.Name = bot_template.Name;
+        //bot_template.Name = bot_template.Name;
+        bot_template.Title = "";
         //possibly need to override whole array (and pointer)
         bot_template.InitializeQueryData();
 
@@ -395,25 +505,24 @@ void BotDataMgr::GenerateBotCustomCreatureTemplates()
             _botsAppearanceData[bot_id] = bot_apdata;
         }
 
+        clonedIds.push_back(orig_template->Entry);
+
         //We do not create CreatureData for generated bots
 
-        uint32 mapId = uint32(0);
-        float pos_x = 2063.4f;
-        float pos_y = 1372.35f;
-        float pos_z = 58.071f;
-        float ori = 2.058f;
+        auto const& spawnLocation = Trinity::Containers::SelectRandomContainerElement(WanderMap.Nodes);
 
-        CellCoord c = Trinity::ComputeCellCoord(pos_x, pos_y);
-        GridCoord g = Trinity::ComputeGridCoord(pos_x, pos_y);
+        CellCoord c = Trinity::ComputeCellCoord(spawnLocation.m_positionX, spawnLocation.m_positionY);
+        GridCoord g = Trinity::ComputeGridCoord(spawnLocation.m_positionX, spawnLocation.m_positionY);
         ASSERT(c.IsCoordValid(), "Invalid Cell coord!");
         ASSERT(g.IsCoordValid(), "Invalid Grid coord!");
-        Map* map = sMapMgr->CreateBaseMap(mapId);
-        map->LoadGrid(pos_x, pos_y);
+        Map* map = sMapMgr->CreateBaseMap(spawnLocation.m_mapId);
+        map->LoadGrid(spawnLocation.m_positionX, spawnLocation.m_positionY);
         ASSERT(!map->Instanceable(), map->GetDebugInfo().c_str());
 
-        TC_LOG_INFO("server.loading", "Spawning wandering bot: %u class %u race %u fac %u", bot_id, bot_extras->bclass, bot_extras->race, bot_data->faction);
+        TC_LOG_INFO("server.loading", "Spawning wandering bot: %s (%u) class %u race %u fac %u, location: mapId %u %s (%s)",
+            bot_template.Name.c_str(), bot_id, bot_extras->bclass, bot_extras->race, bot_data->faction, spawnLocation.m_mapId, spawnLocation.ToString(), spawnLocation.name.data());
         Position spos;
-        spos.Relocate(pos_x, pos_y, pos_z, ori);
+        spos.Relocate(spawnLocation.m_positionX, spawnLocation.m_positionY, spawnLocation.m_positionZ, spawnLocation.GetOrientation());
         Creature* bot = new Creature();
         if (!bot->Create(map->GenerateLowGuid<HighGuid::Unit>(), map, PHASEMASK_NORMAL, bot_id, spos))
         {
@@ -896,4 +1005,75 @@ uint8 BotDataMgr::GetOwnedBotsCount(ObjectGuid owner_guid, uint32 class_mask)
             ++count;
 
     return count;
+}
+
+std::pair<uint8, uint8> BotDataMgr::GetZoneLevels(uint32 zoneId)
+{
+    //Only maps 0 and 1 are covered
+    switch (zoneId)
+    {
+        case 1: // Dun Morogh
+        case 12: // Elwynn Forest
+        case 14: // Durotar
+        case 85: // Tirisfal Glades
+        case 141: // Teldrassil
+        case 215: // Mulgore
+        case 3430: // Eversong Woods
+        case 3524: // Azuremyst Isle
+            return { 1, 14 };
+        case 38: // Loch Modan
+        case 40: // Westfall
+        case 130: // Silverpine Woods
+        case 148: // Darkshore
+        case 3433: // Ghostlands
+        case 3525: // Bloodmyst Isle
+            return { 8, 24 };
+        case 17: // Barrens
+            return { 8, 30 };
+        case 44: // Redridge Mountains
+            return { 13, 30 };
+        case 406: // Stonetalon Mountains
+            return { 13, 32 };
+        case 10: // Duskwood
+        case 11: // Wetlands
+        case 267: // Hillsbrad Foothills
+        case 331: // Ashenvale
+            return { 18, 34 };
+        case 400: // Thousand Needles
+            return { 23, 40 };
+        case 36: // Alterac Mountains
+        case 45: // Arathi Highlands
+        case 405: // Desolace
+            return { 28, 44 };
+        case 33: // Stranglethorn Valley
+            return { 28, 50 };
+        case 3: // Badlands
+        case 8: // Swamp of Sorrows
+        case 15: // Dustwallow Marsh
+            return { 33, 50 };
+        case 47: // Hinterlands
+        case 357: // Feralas
+        case 440: // Tanaris
+            return { 38, 54 };
+        case 4: // Blasted Lands
+        case 16: // Azshara
+        case 51: // Searing Gorge
+            return { 43, 60 };
+        case 490: // Un'Goro Crater
+            return { 45, 60 };
+        case 361: // Felwood
+            return { 46, 60 };
+        case 28: // Western Plaguelands
+        case 46: // Burning Steppes
+            return { 48, 60 };
+        case 41: // Deadwind Pass
+            return { 50, 60 };
+        case 1377: // Silithus
+            return { 53, 60 };
+        case 139: // Eastern Plaguelands
+        case 618: // Winterspring
+            return { 53, 60 }; //63
+        default:
+            return { 0, 0 };
+    }
 }

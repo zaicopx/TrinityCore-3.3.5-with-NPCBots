@@ -640,6 +640,8 @@ class bot_ai : public CreatureAI
         bool _atHome;
         bool _wanderer;
 
+        uint8 _baseLevel;
+
         float _energyFraction;
 
         //counters (this session)
