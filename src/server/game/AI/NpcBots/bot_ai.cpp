@@ -199,6 +199,7 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
     waitTimer = 0;
     itemsAutouseTimer = 0;
     _usableItemSlotsMask = 0;
+    evadeDelayTimer = 0;
     GC_Timer = 0;
     lastdiff = 0;
     _energyFraction = 0.f;
@@ -243,6 +244,8 @@ bot_ai::bot_ai(Creature* creature) : CreatureAI(creature)
 
     _ownerGuid = 0;
 
+    _wanderer = false;
+
     opponent = nullptr;
     disttarget = nullptr;
 
@@ -278,7 +281,77 @@ void bot_ai::GenerateRand() const
     __rand = urand(0, IAmFree() ? 100 : 100 + (master->GetNpcBotsCount() - 1) * 2);
 }
 
-std::map<uint32, std::string> unk_botstrings;
+constexpr std::pair<uint8, uint8> GetZoneLevels(uint32 zoneId)
+{
+    //Only maps 0 and 1 are covered
+    switch (zoneId)
+    {
+        case 1: // Dun Morogh
+        case 12: // Elwynn Forest
+        case 14: // Durotar
+        case 85: // Tirisfal Glades
+        case 141: // Teldrassil
+        case 215: // Mulgore
+        case 3430: // Eversong Woods
+        case 3524: // Azuremyst Isle
+            return { 1, 14 };
+        case 38: // Loch Modan
+        case 40: // Westfall
+        case 130: // Silverpine Woods
+        case 148: // Darkshore
+        case 3433: // Ghostlands
+        case 3525: // Bloodmyst Isle
+            return { 8, 24 };
+        case 17: // Barrens
+            return { 8, 30 };
+        case 44: // Redridge Mountains
+            return { 13, 30 };
+        case 406: // Stonetalon Mountains
+            return { 13, 32 };
+        case 10: // Duskwood
+        case 11: // Wetlands
+        case 267: // Hillsbrad Foothills
+        case 331: // Ashenvale
+            return { 18, 34 };
+        case 400: // Thousand Needles
+            return { 23, 40 };
+        case 36: // Alterac Mountains
+        case 45: // Arathi Highlands
+        case 405: // Desolace
+            return { 28, 44 };
+        case 33: // Stranglethorn Valley
+            return { 28, 50 };
+        case 3: // Badlands
+        case 8: // Swamp of Sorrows
+        case 15: // Dustwallow Marsh
+            return { 33, 50 };
+        case 47: // Hinterlands
+        case 357: // Feralas
+        case 440: // Tanaris
+            return { 38, 54 };
+        case 4: // Blasted Lands
+        case 16: // Azshara
+        case 51: // Searing Gorge
+            return { 43, 60 };
+        case 490: // Un'Goro Crater
+            return { 45, 60 };
+        case 361: // Felwood
+            return { 46, 60 };
+        case 28: // Western Plaguelands
+        case 46: // Burning Steppes
+            return { 48, 60 };
+        case 41: // Deadwind Pass
+            return { 50, 60 };
+        case 1377: // Silithus
+            return { 53, 60 };
+        case 139: // Eastern Plaguelands
+        case 618: // Winterspring
+            return { 53, 60 }; //63
+        default:
+            return { 0, 0 };
+    }
+}
+
 const std::string& bot_ai::LocalizedNpcText(Player const* forPlayer, uint32 textId)
 {
     LocaleConstant loc = forPlayer ? forPlayer->GetSession()->GetSessionDbLocaleIndex() : sWorld->GetDefaultDbcLocale();
@@ -293,17 +366,29 @@ const std::string& bot_ai::LocalizedNpcText(Player const* forPlayer, uint32 text
             return nt->Options[0].Text_0;
     }
 
-    if (!unk_botstrings.count(textId))
     {
-        TC_LOG_ERROR("entities.player", "NPCBots: bot text string #%u is not localized, at least for %s",
-            textId, localeNames[loc]);
+        static std::map<uint32, std::string> unk_botstrings;
 
-        std::ostringstream msg;
-        msg << (loc == DEFAULT_LOCALE ? "<undefined string " : "<unlocalized string ") << textId << ">";
-        unk_botstrings[textId] = msg.str();
+        if (!unk_botstrings.count(textId))
+        {
+            TC_LOG_ERROR("entities.player", "NPCBots: bot text string #%u is not localized, at least for %s",
+                textId, localeNames[loc]);
+
+            std::ostringstream msg;
+            msg << (loc == DEFAULT_LOCALE ? "<undefined string " : "<unlocalized string ") << textId << ">";
+            unk_botstrings[textId] = msg.str();
+        }
+
+        return unk_botstrings[textId];
     }
+}
 
-    return unk_botstrings[textId];
+void bot_ai::InitializeAI()
+{
+    if (!me->GetSpawnId() && !IsTempBot())
+        SetWanderer();
+
+    Reset();
 }
 
 void bot_ai::BotSay(const std::string &text, Player const* target) const
@@ -1271,14 +1356,21 @@ void bot_ai::BuffAndHealGroup(uint32 diff)
         if (BuffTarget(me, diff))
             return;
 
+        if (IsWanderer() && HealTarget(me, diff))
+            return;
+
         if (!omniHostile)
         {
             std::list<Unit*> targets2;
             GetNearbyFriendlyTargetsList(targets2, 30);
             targets2.remove_if(BOTAI_PRED::BuffTargetExclude());
-            targets2.remove_if([](Unit const* unit) { return unit->GetTypeId() != TYPEID_PLAYER; });
+            targets2.remove_if([this](Unit const* unit) {
+                return unit->GetTypeId() != TYPEID_PLAYER && !(IsWanderer() && unit->IsNPCBot() && unit->ToCreature()->GetBotAI()->IsWanderer());
+            });
+            if (!targets2.empty() && BuffTarget(targets2.size() == 1 ? targets2.front() : Trinity::Containers::SelectRandomContainerElement(targets2), diff))
+                return;
             for (std::list<Unit*>::const_iterator itr = targets2.begin(); itr != targets2.end(); ++itr)
-                if (urand(1, 100) <= 30 && BuffTarget(*itr, diff))
+                if (urand(1, 100) <= 30 && HealTarget(*itr, diff))
                     return;
         }
 
@@ -2177,6 +2269,33 @@ void bot_ai::SetStats(bool force)
 
     uint8 myclass = _botclass;
     uint8 mylevel = std::min<uint8>(master->GetLevel(), 80);
+    if (force && IsWanderer() && firstspawn) //this only happens once
+    {
+        if (urand(1, 100) <= 10)
+        {
+            switch (me->GetMap()->GetEntry()->ID)
+            {
+                case 0: case 1: mylevel = 60; break;
+                case 530:       mylevel = 70; break;
+                default:        mylevel = 80; break;
+            }
+        }
+        else
+        {
+            auto [zonelevelmin, zonelevelmax] = GetZoneLevels(me->GetZoneId());
+            if (zonelevelmin > 0 && zonelevelmax > 0)
+                mylevel = std::min<uint8>((me->GetEntry() % 10) + urand(zonelevelmin, zonelevelmax), 80);
+            else
+            {
+                switch (me->GetMap()->GetEntry()->ID)
+                {
+                    case 0: case 1: mylevel = urand(41, 60); break;
+                    case 530:       mylevel = urand(61, 70); break;
+                    default:        mylevel = urand(71, 80); break;
+                }
+            }
+        }
+    }
 
     if (myclass == BOT_CLASS_DRUID && GetBotStance() != BOT_STANCE_NONE)
         myclass = GetBotStance();
@@ -2185,12 +2304,15 @@ void bot_ai::SetStats(bool force)
     /*TC_LOG_ERROR("entities.player", "*etStats(): Updating bot %s, class: %u, race: %u, level %u, master: %s",
         me->GetName().c_str(), myclass, myrace, mylevel, master->GetName().c_str());*/
 
-    switch (me->GetCreatureTemplate()->rank) //TODO: conditions
+    if (firstspawn)
     {
-        case CREATURE_ELITE_RARE:       mylevel += 1;   break;
-        case CREATURE_ELITE_ELITE:      mylevel += 2;   break;
-        case CREATURE_ELITE_RAREELITE:  mylevel += 3;   break;
-        default:                                        break;
+        switch (me->GetCreatureTemplate()->rank)
+        {
+            case CREATURE_ELITE_RARE:       mylevel += 1;   break;
+            case CREATURE_ELITE_ELITE:      mylevel += 2;   break;
+            case CREATURE_ELITE_RAREELITE:  mylevel += 3;   break;
+            default:                                        break;
+        }
     }
     mylevel = std::min<uint8>(mylevel, 83);
 
@@ -3547,7 +3669,7 @@ bool bot_ai::CanBotAttack(Unit const* target, int8 byspell, bool secondary) cons
         (!HasBotCommandState(BOT_COMMAND_STAY) ||
         ((!IsRanged() && !secondary) ? me->IsWithinMeleeRange(target) : me->GetDistance(target) <= foldist)) &&//if stationery check own distance
         (target->IsHostileTo(master) || target->IsHostileTo(me) ||//if master is controlled
-        (target->GetReactionTo(me) < REP_FRIENDLY && (master->IsInCombat() || target->IsInCombat()))) &&
+        (target->GetReactionTo(me) < REP_FRIENDLY && (master->IsInCombat() || target->IsInCombat() || IsWanderer()))) &&
         (byspell == -1 || !target->IsTotem()) &&
         (byspell == -1 || !mainMask || !target->IsImmunedToDamage(mainMask)));
 }
@@ -4119,7 +4241,7 @@ std::tuple<Unit*, Unit*> bot_ai::_getTargets(bool byspell, bool ranged, bool &re
     if (!dropTarget && (!u || IAmFree()) && master->IsAlive() && mytar && mytar == opponent)
     {
         dropTarget = IAmFree() ?
-            me->GetDistance(mytar) > foldist :
+            !IsWanderer() && me->GetDistance(mytar) > foldist :
             HasBotCommandState(BOT_COMMAND_STAY) ?
             (!IsRanged() ? !me->IsWithinMeleeRange(mytar) : me->GetDistance(mytar) > foldist) :
             (master->GetDistance(mytar) > foldist || (master->GetDistance(mytar) > foldist * 0.75f && !mytar->IsWithinLOSInMap(me)));
@@ -4198,25 +4320,94 @@ std::tuple<Unit*, Unit*> bot_ai::_getTargets(bool byspell, bool ranged, bool &re
             }
         }
     }
-
-    //check targets around
-    Unit* t1 = nullptr;
-    Unit* t2 = nullptr;
-    float maxdist = InitAttackRange(float(followdist), ranged);
-    //first cycle we search non-cced target, then, if not found, check all
-    for (uint8 i = 0; i != 2; ++i)
+    else
     {
-        if (!t1)
-        {
-            bool attackCC = i;
-            NearestHostileUnitCheck check(me, maxdist, byspell, this, attackCC, !IsRanged() && HasBotCommandState(BOT_COMMAND_STAY));
-            Unit2LastSearcher<NearestHostileUnitCheck> searcher(t1, t2, check);
-            Cell::VisitAllObjects(HasBotCommandState(BOT_COMMAND_STAY) ? me->ToUnit() : master->ToUnit(), searcher, maxdist);
-            //me->VisitNearbyObject(maxdist, searcher);
-        }
+        //check attackers
+        u = nullptr;
+        for (Unit* att : me->getAttackers())
+            if (!u || me->GetDistance(att) < me->GetDistance(u))
+                u = att;
+        if (!u && botPet)
+            for (Unit* att : botPet->getAttackers())
+                if (!u || me->GetDistance(att) < me->GetDistance(u))
+                    u = att;
+        if (u)
+            return { u, u };
     }
 
-    Unit* curtar = opponent ? opponent : disttarget ? disttarget : nullptr;
+    if (IAmFree() && IsWanderer() && !me->IsInCombat() && (Feasting() || me->GetHealthPct() < 85.f))
+        return { nullptr, nullptr };
+
+    //check targets around
+    float maxdist = InitAttackRange(float(followdist), ranged);
+    std::array<std::pair<Unit*, float>, 2> ts{};
+    std::list<Unit*> unitList;
+    NearestHostileUnitCheck check(me, maxdist, byspell, this);
+    Trinity::UnitListSearcher searcher(master->ToUnit(), unitList, check);
+    Cell::VisitAllObjects(HasBotCommandState(BOT_COMMAND_STAY) ? me->ToUnit() : master->ToUnit(), searcher, maxdist);
+
+    if (IAmFree())
+    {
+        if (IsWanderer())
+        {
+            unitList.remove_if([me = me](Unit const* unit) -> bool {
+                if (!unit->IsPlayer() && !unit->IsInCombatWith(me))
+                {
+                    if (me->GetLevel() + (unit->ToCreature()->isElite() ? 3 : 10) < unit->GetLevel())
+                        return true;
+                    if (unit->IsCritter())
+                        return true;
+                }
+                return false;
+            });
+        }
+
+        decltype(unitList) closeList;
+        for (decltype(unitList)::iterator it = unitList.begin(); it != unitList.end();)
+        {
+            if (!CanBotAttack(*it, byspell))
+                it = unitList.erase(it);
+            else if (me->GetDistance(*it) < 15.f)
+            {
+                closeList.push_back(*it);
+                it = unitList.erase(it);
+            }
+            else
+                ++it;
+        }
+
+        if (!closeList.empty())
+        {
+            ts[0].first = closeList.size() == 1 ? closeList.front() : Trinity::Containers::SelectRandomContainerElement(closeList);
+            ts[0].second = me->GetDistance(ts[0].first);
+        }
+        else if (!unitList.empty())
+        {
+            ts[0].first = unitList.size() == 1 ? unitList.front() : Trinity::Containers::SelectRandomContainerElement(unitList);
+            ts[0].second = me->GetDistance(ts[0].first);
+        }
+    }
+    else
+    {
+        bool checkSecondary = !IsRanged() && HasBotCommandState(BOT_COMMAND_STAY);
+        for (Unit* un : unitList)
+        {
+            uint32 res = !CanBotAttack(un, byspell) ? (checkSecondary && CanBotAttack(un, byspell, checkSecondary)) ? 2 : 0 : 1;
+            switch (res)
+            {
+                case 1: case 2:
+                    if (!ts[res - 1].first || me->GetDistance(un) < ts[res - 1].second)
+                        ts[res - 1] = { un, me->GetDistance(un) };
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    Unit* t1 = ts[0].first;
+    Unit* t2 = ts[1].first;
+
+    Unit const* curtar = opponent ? opponent : disttarget ? disttarget : nullptr;
     if (t1 && curtar && t1 != curtar)
         reset = true;
 
@@ -4653,11 +4844,12 @@ bool bot_ai::IsWithinAoERadius(Position const& pos) const
 //If mounted: 20%
 //If ranged: 125%
 //If master is dead: max range
+//If wanderer: 65% max range
 float bot_ai::InitAttackRange(float origRange, bool ranged) const
 {
-    /*if (IAmFree())
-        origRange = sWorld->GetMaxVisibleDistanceOnContinents();
-    else */if (!master->IsAlive())
+    if (IsWanderer())
+        origRange = sWorld->GetMaxVisibleDistanceOnContinents() * 0.65f;
+    else if (!master->IsAlive())
         origRange = sWorld->GetMaxVisibleDistanceOnContinents();
     else if (me->HasAuraType(SPELL_AURA_MOUNTED))
         origRange *= 0.2f;
@@ -4865,7 +5057,7 @@ void bot_ai::GetInPosition(bool force, Unit* newtarget, Position* mypos)
         newtarget = me->GetVictim();
     if (!newtarget)
         return;
-    if ((!newtarget->IsInCombat() || (mover->isMoving()/* && Rand() > 50*/)) && !force)
+    if ((!newtarget->IsInCombat() || (mover->isMoving()/* && Rand() > 50*/)) && !force && !(_atHome && _evadeMode))
         return;
     if (IsCasting(mover))
         return;
@@ -6828,7 +7020,7 @@ bool bot_ai::Wait()
         return true;
 
     if (IAmFree())
-        waitTimer = me->IsInCombat() ? 500 : ((__rand + 100) * 50);
+        waitTimer = me->IsInCombat() ? 500 : ((__rand + 100) * 20);
     else if (!master->GetMap()->IsRaid())
         waitTimer = std::min<uint32>(uint32(50 * (master->GetNpcBotsCount() - 1) + __rand), 500);
     else
@@ -6960,6 +7152,8 @@ bool bot_ai::OnGossipHello(Player* player, uint32 /*option*/)
 
     if (me->isMoving())
         me->BotStopMovement();
+
+    evadeDelayTimer = std::max<decltype(evadeDelayTimer)>(evadeDelayTimer, 10000);
 
     uint32 gossipTextId;
     if (!IAmFree())
@@ -7227,6 +7421,11 @@ bool bot_ai::OnGossipSelect(Player* player, Creature* creature/* == me*/, uint32
         player->PlayerTalkClass->SendCloseGossip();
         return true;
     }
+
+    if (me->isMoving())
+        me->BotStopMovement();
+
+    evadeDelayTimer = std::max<decltype(evadeDelayTimer)>(evadeDelayTimer, 10000);
 
     uint32 gossipTextId;
     if (!IAmFree())
@@ -13132,7 +13331,7 @@ void bot_ai::DefaultInit()
     }
 
     //bot needs to be either directly controlled by player of have pvp flag to be a valid assist target (buffs, heals, etc.)
-    me->SetPvP(master->IsPvP());
+    me->SetPvP(master->IsPvP() || IsWanderer());
     me->SetUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED);
     if (sWorld->IsFFAPvPRealm())
         me->SetByteFlag(UNIT_FIELD_BYTES_2, 1, UNIT_BYTE2_FLAG_FFA_PVP);
@@ -14165,7 +14364,6 @@ bool bot_ai::UpdateImpossibleChase(Unit const* target)
     {
         ResetChaseTimer(target);
         BotMovement(BOT_MOVE_POINT, target, nullptr, false);
-        //me->GetMotionMaster()->MovePoint(me->GetMapId(), *target, false);
         return true;
     }
 
@@ -14177,15 +14375,13 @@ bool bot_ai::UpdateImpossibleChase(Unit const* target)
     }
 
     ResetChaseTimer(target);
-    if (!HasRole(BOT_ROLE_RANGED))
-        BotJump(target);
+    BotJump(target);
     return true;
 }
 
 void bot_ai::ResetChaseTimer(Position const* /*pos*/)
 {
-    _chaseTimer = 30000;//std::max<uint32>(5000, me->GetDistance2d(pos->m_positionX, pos->m_positionY) * 400);
-    //me->GetDistance2d(pos->m_positionX, pos->m_positionY) * 1000 / me->GetSpeed(MOVE_WALK);
+    _chaseTimer = IsWanderer() ? 10000 : 20000;
 }
 
 void bot_ai::ResetChase(Position const* pos)
@@ -14230,6 +14426,8 @@ void bot_ai::JustEnteredCombat(Unit* u)
         me->RemoveNpcFlag(UNIT_NPC_FLAG_GOSSIP);
 
     _evadeMode = false;
+    _evadeCount = 0;
+    evadeDelayTimer = 0;
     AbortTeleport();
 
     ResetChase(u);
@@ -16209,7 +16407,7 @@ bool bot_ai::GlobalUpdate(uint32 diff)
                     //TC_LOG_ERROR("scripts", "%s calculates attack pos to attack %s", me->GetName().c_str(), victim->GetName().c_str());
                     bool force = false;
                     CalculateAttackPos(victim, attackpos, force);
-                    if (mover->GetExactDist2d(&attackpos) > (force ? 0.1f : 4.f))
+                    if (mover->GetExactDist2d(&attackpos) > (force ? 0.1f : 4.f) || (force && IsWanderer()))
                     {
                         //TC_LOG_ERROR("scripts", "%s moving to x %.2f y %.2f z %.2f to attack %s",
                         //    me->GetName().c_str(), attackpos.m_positionX, attackpos.m_positionY, attackpos.m_positionZ, victim->GetName().c_str());
@@ -16226,8 +16424,6 @@ bool bot_ai::GlobalUpdate(uint32 diff)
             UpdateHealth();
             UpdateMana();
         }
-        if (_atHome && Rand() < 10)
-            _atHome = false;
     }
 
     if (Wait())
@@ -16291,8 +16487,16 @@ bool bot_ai::GlobalUpdate(uint32 diff)
                 if (me->GetSheath() != SHEATH_STATE_RANGED)
                     me->SetSheath(SHEATH_STATE_RANGED);
             }
-            else if (me->GetSheath() != SHEATH_STATE_MELEE)
-                me->SetSheath(SHEATH_STATE_MELEE);
+            else
+            {
+                if (_botclass == BOT_CLASS_DREADLORD) //classes which don't display weapons
+                {
+                    if (me->GetSheath() != SHEATH_STATE_UNARMED)
+                        me->SetSheath(SHEATH_STATE_UNARMED);
+                }
+                else if (me->GetSheath() != SHEATH_STATE_MELEE)
+                    me->SetSheath(SHEATH_STATE_MELEE);
+            }
         }
         else if (me->IsStandState() && me->GetSheath() != SHEATH_STATE_UNARMED && Rand() < 50)
         {
@@ -16318,6 +16522,7 @@ void bot_ai::CommonTimers(uint32 diff)
     if (checkAurasTimer > diff)     checkAurasTimer -= diff;
     if (waitTimer > diff)           waitTimer -= diff;
     if (itemsAutouseTimer > diff)   itemsAutouseTimer -= diff;
+    if (evadeDelayTimer > diff)     evadeDelayTimer -= diff;
     if (roleTimer > diff)           roleTimer -= diff;
     if (ordersTimer > diff)         ordersTimer -= diff;
     if (checkMasterTimer > diff)    checkMasterTimer -= diff;
@@ -16359,8 +16564,10 @@ void bot_ai::Evade()
 {
     if (_atHome && !_evadeMode)
         return;
-    //if (me->IsInCombat())
-    //    return;
+    if (evadeDelayTimer > lastdiff)
+        return;
+    if (IsWanderer() && Feasting())
+        return;
     if (me->GetVictim())
         return;
     if (IsCasting())
@@ -16368,10 +16575,9 @@ void bot_ai::Evade()
     if (CCed(me, true))
         return;
 
-    _atHome = true;
-
     if (!IAmFree() || IsTempBot())
     {
+        _atHome = true;
         _evadeMode = false;
         return;
     }
@@ -16380,10 +16586,8 @@ void bot_ai::Evade()
     Position pos;
     GetHomePosition(mapid, &pos);
 
-    if (mapid != me->GetMapId() || _evadeCount >= 3 || me->GetDistance(pos) > float(SIZE_OF_GRIDS * 0.5f))
+    if (mapid != me->GetMapId() || (!IsWanderer() && (_evadeCount >= 3 || me->GetDistance(pos) > float(SIZE_OF_GRIDS * 0.5f))))
     {
-        //TeleportHome();
-
         if (!teleHomeEvent || !teleHomeEvent->IsActive())
         {
             teleHomeEvent = new TeleportHomeEvent(this);
@@ -16396,53 +16600,60 @@ void bot_ai::Evade()
                 teleHomeEvent->Execute(0,0);
             }
         }
+        _atHome = true;
         _evadeMode = false;
         return;
     }
 
-    float dist = me->GetDistance(pos);
-    if (dist > 1.5f)
+    //delay evade
+    if (evadeDelayTimer == 0)
     {
-        if (!_evadeMode)
+        evadeDelayTimer = 5000;
+        return;
+    }
+
+    _atHome = true;
+
+    float dist = me->GetDistance(pos);
+    if (dist > 1.5f && !me->isMoving())
+    {
+        if (!_evadeMode || (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(float(M_PI)*0.5f, &pos)))
             ++_evadeCount;
-        else if (Rand() < 4 && fabs(me->GetPositionZ() - pos.GetPositionZ()) > 30.f && !me->HasInArc(float(M_PI)*0.5f, &pos))
-            ++_evadeCount;
-        else if (me->isMoving() && Rand() > 10)
-            return;
 
         _evadeMode = true;
 
         //me->BotStopMovement();
 
         bool farpoint = true;
-        if (dist > 50)
+        if (dist > 45.0f)
         {
             float dx = pos.m_positionX - me->m_positionX;
             float dy = pos.m_positionY - me->m_positionY;
-            float fdx = fabs(dx); float fdy = fabs(dy);
+            float fdx = fabs(dx);
+            float fdy = fabs(dy);
             float divider =
-                fdx > 900  || fdy > 900  ?  60.0f :
-                fdx > 600  || fdy > 600  ?  30.0f :
-                fdx > 400  || fdy > 400  ?  20.0f :
-                fdx > 200  || fdy > 200  ?  10.0f :
-                fdx > 100  || fdy > 100  ?   7.0f : 3.0f;
+                fdx > 3600.0f || fdy > 3600.0f ? 180.0f :
+                fdx > 1800.0f || fdy > 1800.0f ?  90.0f :
+                fdx > 900.0f  || fdy > 900.0f  ?  45.0f :
+                fdx > 600.0f  || fdy > 600.0f  ?  30.0f :
+                fdx > 400.0f  || fdy > 400.0f  ?  20.0f :
+                fdx > 200.0f  || fdy > 200.0f  ?  10.0f :
+                fdx > 100.0f  || fdy > 100.0f  ?   7.0f : 3.0f;
             dx = dx / divider + me->m_positionX;
             dy = dy / divider + me->m_positionY;
             float z = me->GetMap()->GetHeight(dx, dy, me->m_positionZ);
 
-            if (z > INVALID_HEIGHT && fabs(me->m_positionZ - z) > 0.05f)
+            if (z > INVALID_HEIGHT)
             {
                 Position position;
                 position.Relocate(dx, dy, z + 0.1f);
                 BotMovement(BOT_MOVE_POINT, &position);
-                //me->GetMotionMaster()->MovePoint(mapid, dx, dy, z + 0.1f, true);
                 farpoint = false;
             }
         }
 
         if (farpoint)
             BotMovement(BOT_MOVE_POINT, &pos);
-            //me->GetMotionMaster()->MovePoint(mapid, pos);
 
         return;
     }
@@ -16452,6 +16663,7 @@ void bot_ai::Evade()
 
     _evadeMode = false;
     _evadeCount = 0;
+    evadeDelayTimer = 0;
 
     me->SetFacingTo(pos.GetOrientation());
     me->SetFaction(me->GetCreatureTemplate()->faction);
@@ -16469,7 +16681,7 @@ void bot_ai::TeleportHome()
     GetHomePosition(mapid, &pos);
 
     Map* map = sMapMgr->CreateBaseMap(mapid);
-    ASSERT(map && !map->Instanceable());
+    ASSERT(!map->Instanceable(), map->GetDebugInfo().c_str());
     BotMgr::TeleportBot(me, map, &pos);
 
     spawned = false;
@@ -16487,10 +16699,6 @@ bool bot_ai::FinishTeleport(/*uint32 mapId, uint32 instanceId, float x, float y,
     //1) Cannot teleport: master disappeared - return home
     if (IAmFree()/* || master->GetSession()->isLogingOut()*/)
     {
-        uint16 mapid;
-        Position pos;
-        GetHomePosition(mapid, &pos);
-
         teleHomeEvent = new TeleportHomeEvent(this);
         Events.AddEvent(teleHomeEvent, Events.CalculateTime(std::chrono::milliseconds(0))); //make sure event will be deleted
         if (teleHomeEvent->IsActive())
@@ -16572,6 +16780,13 @@ void bot_ai::AbortTeleport()
 
 void bot_ai::GetHomePosition(uint16& mapid, Position* pos) const
 {
+    if (IsWanderer())
+    {
+        mapid = me->GetMapId();
+        pos->Relocate(me->GetHomePosition());
+        return;
+    }
+
     CreatureData const* data = me->GetCreatureData();
     mapid = data->mapId;
     pos->Relocate(data->spawnPoint.GetPositionX(), data->spawnPoint.GetPositionY(), data->spawnPoint.GetPositionZ(), data->spawnPoint.GetOrientation());
@@ -17161,7 +17376,7 @@ uint8 bot_ai::GetPlayerClass() const
             case BOT_CLASS_ARCHMAGE:
                 return BOT_CLASS_MAGE;
             case BOT_CLASS_DREADLORD:
-                return BOT_CLASS_PALADIN;
+                return BOT_CLASS_WARLOCK;
             case BOT_CLASS_SPELLBREAKER:
                 return BOT_CLASS_PALADIN;
             case BOT_CLASS_DARK_RANGER:

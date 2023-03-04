@@ -315,6 +315,7 @@ public:
             { "faction",    HandleNpcBotSetFactionCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_SET_FACTION,        Console::No  },
             { "owner",      HandleNpcBotSetOwnerCommand,            rbac::RBAC_PERM_COMMAND_NPCBOT_SET_OWNER,          Console::No  },
             { "spec",       HandleNpcBotSetSpecCommand,             rbac::RBAC_PERM_COMMAND_NPCBOT_SET_SPEC,           Console::No  },
+            { "wander",     HandleNpcBotSetWanderCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
         static ChatCommandTable npcbotCommandCommandTable =
@@ -417,6 +418,7 @@ public:
             { "recall",     npcbotRecallCommandTable                                                                                },
             { "kill",       HandleNpcBotKillCommand,                rbac::RBAC_PERM_COMMAND_NPCBOT_KILL,               Console::No  },
             { "suicide",    HandleNpcBotKillCommand,                rbac::RBAC_PERM_COMMAND_NPCBOT_KILL,               Console::No  },
+            { "go",         HandleNpcBotGoCommand,                  rbac::RBAC_PERM_COMMAND_NPCBOT_MOVE,               Console::No  },
             { "sendto",     npcbotSendToCommandTable                                                                                },
             { "distance",   npcbotDistanceCommandTable                                                                              },
             { "order",      npcbotOrderCommandTable                                                                                 },
@@ -1071,6 +1073,42 @@ public:
         return false;
     }
 
+    static bool HandleNpcBotGoCommand(ChatHandler* handler, Optional<uint32> creatureId)
+    {
+        Player* player = handler->GetSession()->GetPlayer();
+
+        if (!creatureId)
+        {
+            handler->SendSysMessage(".npcbot go #[ID]");
+            handler->SendSysMessage("Teleports to npcbot's current location");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        Creature const* bot = BotDataMgr::FindBot(*creatureId);
+        if (!bot)
+        {
+            handler->PSendSysMessage("NpcBot %u is not found!", *creatureId);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        handler->PSendSysMessage(LANG_APPEARING_AT, bot->GetName().c_str());
+
+        if (player->IsInFlight())
+            player->FinishTaxiFlight();
+        else
+            player->SaveRecallPosition(); // save only in non-flight case
+
+        // to point to see at target with same orientation
+        float x, y, z;
+        bot->GetClosePoint(x, y, z, player->GetCombatReach(), 1.0f);
+
+        player->TeleportTo(bot->GetMapId(), x, y, z, player->GetAbsoluteAngle(bot), TELE_TO_GM_MODE);
+        player->SetPhaseMask(bot->GetPhaseMask(), true);
+        return true;
+    }
+
     static bool HandleNpcBotSendToCommand(ChatHandler* handler, Optional<std::vector<std::string>> names)
     {
         static auto return_syntax = [](ChatHandler* chandler) -> bool {
@@ -1556,6 +1594,22 @@ public:
         return true;
     }
 
+    static bool HandleNpcBotSetWanderCommand(ChatHandler* handler)
+    {
+        Player* chr = handler->GetSession()->GetPlayer();
+        Unit* ubot = chr->GetSelectedUnit();
+        if (!ubot || !ubot->IsNPCBot() || !ubot->ToCreature()->IsFreeBot() || ubot->ToCreature()->GetBotAI()->IsWanderer())
+        {
+            handler->SendSysMessage(".npcbot set wander");
+            handler->SendSysMessage("Sets selected free bot to wander mode");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        ubot->ToCreature()->GetBotAI()->SetWanderer();
+        return true;
+    }
+
     static bool HandleNpcBotLookupCommand(ChatHandler* handler, Optional<uint8> botclass, Optional <bool> unspawned)
     {
         //this is just a modified '.lookup creature' command
@@ -1688,6 +1742,13 @@ public:
         if (!bot || !bot->IsNPCBot())
         {
             handler->SendSysMessage("No npcbot selected");
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (bot->GetBotAI()->IsWanderer())
+        {
+            handler->SendSysMessage("Cannot delete wanderer npcbot");
             handler->SetSentErrorMessage(true);
             return false;
         }

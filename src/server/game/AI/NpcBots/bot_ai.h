@@ -43,7 +43,7 @@ class bot_ai : public CreatureAI
 
         bool canUpdate;
 
-        void InitializeAI() override { Reset(); }
+        void InitializeAI() override;
         //void Reset() override { }
 
         void JustDied(Unit*) override;
@@ -154,6 +154,9 @@ class bot_ai : public CreatureAI
         bool IsInHeroicOrRaid() const;
 
         bool IAmFree() const;
+
+        bool IsWanderer() const { return _wanderer; }
+        void SetWanderer() { if (IAmFree()) _wanderer = true; }
 
         static bool CCed(Unit const* target, bool root = false);
 
@@ -618,6 +621,7 @@ class bot_ai : public CreatureAI
         uint32 _wmoAreaUpdateTimer;
         uint32 waitTimer;
         uint32 itemsAutouseTimer;
+        uint32 evadeDelayTimer;
         //save timers
         uint32 _saveDisabledSpellsTimer;
 
@@ -634,6 +638,7 @@ class bot_ai : public CreatureAI
         bool firstspawn;
         bool _evadeMode;
         bool _atHome;
+        bool _wanderer;
 
         float _energyFraction;
 

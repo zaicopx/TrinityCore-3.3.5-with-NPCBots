@@ -384,7 +384,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         void ExitVehicle(Position const* exitPosition = nullptr) override;
 
         //NPCBots
-        bool LoadBotCreatureFromDB(ObjectGuid::LowType guid, Map* map, bool addToMap = true);
+        bool LoadBotCreatureFromDB(ObjectGuid::LowType guid, Map* map, bool addToMap = true, bool generated = false, uint32 entry = 0, Position* pos = nullptr);
         Player* GetBotOwner() const;
         Unit* GetBotsPet() const;
         bool IsNPCBot() const override;

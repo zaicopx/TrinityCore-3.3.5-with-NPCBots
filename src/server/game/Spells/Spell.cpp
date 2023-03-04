@@ -1835,12 +1835,14 @@ uint32 Spell::GetSearcherTypeMask(SpellTargetObjectTypes objType, ConditionConta
     }
 
     if (m_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_PLAYERS))
+    {
         //npcbot: do not exclude creatures, see WorldObjectSpellNearbyTargetCheck, WorldObjectSpellAreaTargetCheck
         if (retMask & GRID_MAP_TYPE_MASK_CREATURE)
             retMask &= GRID_MAP_TYPE_MASK_CORPSE | GRID_MAP_TYPE_MASK_PLAYER | GRID_MAP_TYPE_MASK_CREATURE;
         else
         //end npcbot
         retMask &= GRID_MAP_TYPE_MASK_CORPSE | GRID_MAP_TYPE_MASK_PLAYER;
+    }
     if (m_spellInfo->HasAttribute(SPELL_ATTR3_ONLY_TARGET_GHOSTS))
         retMask &= GRID_MAP_TYPE_MASK_PLAYER;
 
@@ -6108,6 +6110,13 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
 
                     if (target->GetCharmerGUID())
                         return SPELL_FAILED_CHARMED;
+ 
+                    //npcbot: do not allow to charm owned npcbots
+                    if (target->GetCreatorGUID() && target->GetCreatorGUID().IsPlayer())
+                        return SPELL_FAILED_TARGET_IS_PLAYER_CONTROLLED;
+                    else if (target->IsNPCBotOrPet())
+                        return SPELL_FAILED_CANT_BE_CHARMED;
+                    //end npcbot
 
                     if (target->GetOwner() && target->GetOwner()->GetTypeId() == TYPEID_PLAYER)
                         return SPELL_FAILED_TARGET_IS_PLAYER_CONTROLLED;
