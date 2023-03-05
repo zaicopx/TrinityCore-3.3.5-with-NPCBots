@@ -307,6 +307,7 @@ public:
             { "spellvisual",HandleNpcBotDebugSpellVisualCommand,    rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_VISUAL,       Console::No  },
             { "states",     HandleNpcBotDebugStatesCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
             { "names",      HandleNpcBotDebugNamesCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
+            //{ "exportwmap", HandleNpcBotDebugExportWMap,            rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::Yes },
             { "spells",     HandleNpcBotDebugSpellsCommand,         rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
@@ -315,7 +316,7 @@ public:
             { "faction",    HandleNpcBotSetFactionCommand,          rbac::RBAC_PERM_COMMAND_NPCBOT_SET_FACTION,        Console::No  },
             { "owner",      HandleNpcBotSetOwnerCommand,            rbac::RBAC_PERM_COMMAND_NPCBOT_SET_OWNER,          Console::No  },
             { "spec",       HandleNpcBotSetSpecCommand,             rbac::RBAC_PERM_COMMAND_NPCBOT_SET_SPEC,           Console::No  },
-            { "wander",     HandleNpcBotSetWanderCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
+            //{ "wander",     HandleNpcBotSetWanderCommand,           rbac::RBAC_PERM_COMMAND_NPCBOT_DEBUG_STATES,       Console::No  },
         };
 
         static ChatCommandTable npcbotCommandCommandTable =
@@ -432,6 +433,65 @@ public:
         };
         return commandTable;
     }
+
+    /*
+    static bool HandleNpcBotDebugExportWMap(ChatHandler* handler, uint32 prefix)
+    {
+        std::string wmap_tablename = "creature_wmap_" + std::to_string(prefix);
+
+        handler->PSendSysMessage("Exporting Wander Map nodes to %s", wmap_tablename.c_str());
+
+        WorldDatabaseTransaction trans = WorldDatabase.BeginTransaction();
+        trans->PAppend(
+            "CREATE TABLE IF NOT EXISTS `%s` ("
+            "`id` int(10) unsigned NOT NULL,"
+            "`mapid` smallint(5) unsigned NOT NULL DEFAULT '0',"
+            "`zoneid` int(10) unsigned NOT NULL DEFAULT '0',"
+            "`x` float NOT NULL DEFAULT '0',"
+            "`y` float NOT NULL DEFAULT '0',"
+            "`z` float NOT NULL DEFAULT '0',"
+            "`o` float NOT NULL DEFAULT '0',"
+            "`name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',"
+            "PRIMARY KEY (`id`)"
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bot Wander Map'",
+            wmap_tablename.c_str());
+        WorldDatabase.DirectCommitTransaction(trans);
+        QueryResult tableBase = WorldDatabase.PQuery("SELECT id from %s LIMIT 1", wmap_tablename.c_str());
+        if (tableBase)
+        {
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        uint32 total_nodes = 0;
+
+        std::ostringstream ss;
+        ss.setf(std::ios_base::fixed);
+        ss.precision(4);
+        ss << "INSERT INTO " << wmap_tablename << " (id, mapid, zoneid, x, y, z, o, name) VALUES ";
+        for (auto const& vt : BotDataMgr::WanderMap.Nodes)
+        {
+            for (auto const& n : vt.second)
+            {
+                ++total_nodes;
+                ss << '('
+                    << n.id << ',' << n.m_mapId << ',' << n.zoneId << ','
+                    << n.m_positionX << ',' << n.m_positionY << ',' << n.m_positionZ << ',' << n.GetOrientation() << ','
+                    << '\'' << n.name << '\''
+                    << "),";
+            }
+        }
+
+        std::string qstring = ss.str();
+        qstring.resize(qstring.size() - 1);
+        TC_LOG_ERROR("scripts", "Executing: %s", qstring.c_str());
+
+        WorldDatabase.DirectExecute(qstring.c_str());
+
+        handler->PSendSysMessage("Successfully exported %u nodes", total_nodes);
+        return true;
+    }
+    */
 
     static bool HandleNpcBotDebugNamesCommand(ChatHandler* handler, Optional<std::string_view> name)
     {
@@ -1593,7 +1653,7 @@ public:
         handler->PSendSysMessage("%s's new spec is %u", bot->GetName().c_str(), uint32(*spec));
         return true;
     }
-
+    /*
     static bool HandleNpcBotSetWanderCommand(ChatHandler* handler)
     {
         Player* chr = handler->GetSession()->GetPlayer();
@@ -1609,7 +1669,7 @@ public:
         ubot->ToCreature()->GetBotAI()->SetWanderer();
         return true;
     }
-
+    */
     static bool HandleNpcBotLookupCommand(ChatHandler* handler, Optional<uint8> botclass, Optional <bool> unspawned)
     {
         //this is just a modified '.lookup creature' command

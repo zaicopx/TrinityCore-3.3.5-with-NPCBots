@@ -1002,7 +1002,7 @@ void WorldObject::setActive(bool on)
         return;
 
     //npcbot: bots should never be removed from active
-    if (on == false && IsNPCBot())
+    if (on == false && IsNPCBotOrPet())
         return;
     //end npcbot
 
@@ -2986,7 +2986,7 @@ bool WorldObject::IsValidAttackTarget(WorldObject const* target, SpellInfo const
     //npcbot: CvC case fix for bots, still a TODO
     if (unit && unitTarget && !unit->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
         !unitTarget->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        (IsNPCBotOrPet() || target->IsNPCBotOrPet()))
+        ((IsNPCBotOrPet() && !ToCreature()->IsFreeBot()) || (target->IsNPCBotOrPet() && !target->ToCreature()->IsFreeBot())))
         return GetReactionTo(target) <= REP_NEUTRAL || target->GetReactionTo(this) <= REP_NEUTRAL;
     //end npcbot
 

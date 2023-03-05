@@ -1013,6 +1013,7 @@ void GenerateBotCustomSpells()
 
     sinfo->_effects[0].Effect = SPELL_EFFECT_WEAPON_PERCENT_DAMAGE;
     sinfo->_effects[0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_TARGET_ENEMY);
+    sinfo->_effects[0].ApplyAuraName = SPELL_AURA_NONE;
     sinfo->_effects[0].BasePoints = 150;
     sinfo->_effects[0].DieSides = 0;
     sinfo->_effects[0].BonusMultiplier = 1.f;

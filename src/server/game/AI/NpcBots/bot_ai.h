@@ -155,8 +155,14 @@ class bot_ai : public CreatureAI
 
         bool IAmFree() const;
 
+        //wandering bots
         bool IsWanderer() const { return _wanderer; }
         void SetWanderer() { if (IAmFree()) _wanderer = true; }
+        uint32 GetTravelNodeCur() const { return _travel_node_cur; }
+        uint32 GetTravelNodeLast() const { return _travel_node_last; }
+        void SetTravelNodeCur(uint32 nodeId) { _travel_node_cur = nodeId; }
+        void SetTravelNodeLast(uint32 nodeId) { _travel_node_last = nodeId; }
+        uint32 GetNextTravelNode(Position& pos) const;
 
         static bool CCed(Unit const* target, bool root = false);
 
@@ -604,7 +610,7 @@ class bot_ai : public CreatureAI
 
         PlayerClassLevelInfo* _classinfo;
         SpellInfo const* m_botSpellInfo;
-        Position movepos, attackpos, sendlastpos;
+        Position homepos, movepos, attackpos, sendlastpos;
         Position sendpos[MAX_SEND_POINTS];
 
         uint32 _botCommandState;
@@ -638,9 +644,12 @@ class bot_ai : public CreatureAI
         bool firstspawn;
         bool _evadeMode;
         bool _atHome;
-        bool _wanderer;
 
+        //wandering bots
+        bool _wanderer;
         uint8 _baseLevel;
+        uint32 _travel_node_last;
+        uint32 _travel_node_cur;
 
         float _energyFraction;
 

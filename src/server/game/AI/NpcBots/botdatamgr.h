@@ -11,6 +11,7 @@ class Creature;
 
 struct EquipmentInfo;
 struct CreatureTemplate;
+struct Position;
 
 enum LocaleConstant : uint8;
 
@@ -158,9 +159,11 @@ class BotDataMgr
 
         static void GenerateWanderingBots();
         static CreatureTemplate const* GetBotExtraCreatureTemplate(uint32 entry);
-        static EquipmentInfo const* GetDummyEquipmentInfo();
+        static EquipmentInfo const* GetBotEquipmentInfo(uint32 entry);
 
         static std::pair<uint8, uint8> GetZoneLevels(uint32 zoneId);
+        static std::pair<uint32 /*nodeId*/, Position const*> GetWanderMapNode(uint32 mapId, uint32 curNodeId, uint32 lastNodeId, uint8 lvl);
+        static Position const* GetWanderMapNodePosition(uint32 mapId, uint32 nodeId);
 
         static std::shared_mutex* GetLock();
 
