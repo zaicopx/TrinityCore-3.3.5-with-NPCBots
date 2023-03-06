@@ -32,6 +32,22 @@ NpcBotRegistry _existingBots;
 CreatureTemplateContainer _botsWanderCreatureTemplates;
 std::unordered_map<uint32, EquipmentInfo const*> _botsWanderCreatureEquipmentTemplates;
 
+static constexpr char const* WanderMapCreationQuery =
+    "CREATE TABLE IF NOT EXISTS `creature_wander_nodes` ("
+    "`id` int(10) unsigned NOT NULL,"
+    "`mapid` smallint(5) unsigned NOT NULL DEFAULT '0',"
+    "`zoneid` int(10) unsigned NOT NULL DEFAULT '0',"
+    "`x` float NOT NULL DEFAULT '0',"
+    "`y` float NOT NULL DEFAULT '0',"
+    "`z` float NOT NULL DEFAULT '0',"
+    "`o` float NOT NULL DEFAULT '0',"
+    "`name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',"
+    "PRIMARY KEY (`id`)"
+    ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bot Wander Map'";
+static constexpr float NODE_CONNECTION_DIST_MAX = 1400.f;
+static constexpr float NODE_CONNECTION_DIST_MAX_GEN = 370.f;
+static constexpr std::array wanderMapIds{ 0u, 1u };
+
 bool allBotsLoaded = false;
 
 class BotTravelGraph
@@ -67,17 +83,99 @@ public:
     static constexpr size_t sizeofNode = sizeof(BotTravelNode);
 } static WanderMap;
 
+void GenerateWanderNodes()
+{
+    using NodeType = BotTravelGraph::BotTravelNode;
+
+    for (GameTeleContainer::value_type const& tele_pair : sObjectMgr->GetGameTeleMap())
+    {
+        GameTele const& tele = tele_pair.second;
+        if (std::find(std::cbegin(wanderMapIds), std::cend(wanderMapIds), tele.mapId) == wanderMapIds.cend())
+            continue;
+
+        Position pos(tele.position_x, tele.position_y, tele.position_z, tele.orientation);
+        uint32 teleZoneId = sMapMgr->GetZoneId(PHASEMASK_NORMAL, tele.mapId, pos);
+        auto [lvlmin, lvlmax] = BotDataMgr::GetZoneLevels(teleZoneId);
+        if (lvlmin == 0 || lvlmax == 0)
+            continue;
+
+        WanderMap.Nodes[tele.mapId][tele_pair.first] = NodeType(tele.mapId, pos, tele_pair.first, teleZoneId, lvlmin, lvlmax, tele.name);
+    }
+
+    for (decltype(WanderMap.Nodes)::value_type& mapNodes1 : WanderMap.Nodes)
+    {
+        for (decltype(mapNodes1.second)::iterator it = mapNodes1.second.begin(); it != mapNodes1.second.end();)
+        {
+            for (auto& nodepair2 : WanderMap.Nodes.at(it->second.m_mapId))
+            {
+                if (it->first == nodepair2.first)
+                    continue;
+
+                float dist2d = it->second.GetExactDist2d(nodepair2.second);
+                if (dist2d < NODE_CONNECTION_DIST_MAX_GEN)
+                    it->second.connections.push_back(&nodepair2.second);
+            }
+
+            if (it->second.connections.empty())
+                it = mapNodes1.second.erase(it);
+            else
+                ++it;
+        }
+    }
+
+    uint32 total_nodes = 0;
+    for (decltype(WanderMap.Nodes)::value_type& mapNodes1 : WanderMap.Nodes)
+        total_nodes += mapNodes1.second.size();
+
+    if (total_nodes == 0)
+    {
+        TC_LOG_FATAL("server.loading", "Failed to generate wander points: no game_tele points added!");
+        ASSERT(false);
+    }
+
+    TC_LOG_INFO("server.loading", "Generated %u nodes, saving...", total_nodes);
+
+    std::ostringstream ss;
+    ss.setf(std::ios_base::fixed);
+    ss.precision(4);
+    ss << "INSERT INTO creature_wander_nodes (id, mapid, zoneid, x, y, z, o, name) VALUES ";
+    for (auto const& vt : WanderMap.Nodes)
+    {
+        for (auto const& nvt : vt.second)
+        {
+            auto const& n = nvt.second;
+            ss << '('
+                << n.id << ',' << n.m_mapId << ',' << n.zoneId << ','
+                << n.m_positionX << ',' << n.m_positionY << ',' << n.m_positionZ << ',' << n.GetOrientation() << ','
+                << '\'' << n.name << '\''
+                << "),";
+        }
+    }
+
+    std::string qstring = ss.str();
+    qstring.resize(qstring.size() - 1);
+    //TC_LOG_INFO("scripts", "Executing: %s", qstring.c_str());
+
+    WorldDatabase.DirectExecute(qstring.c_str());
+
+    TC_LOG_INFO("server.loading", "Successfully exported %u nodes", total_nodes);
+}
+
 void FillWanderMap()
 {
     using NodeType = BotTravelGraph::BotTravelNode;
 
-    const float NODE_CONNECTION_DIST_MAX = 1400.f;
-
-    const std::array wanderMapIds{ 0u, 1u };
-
-    TC_LOG_INFO("server.loading", "Generating bot wander map...");
+    TC_LOG_INFO("server.loading", "Loading bot wander map...");
 
     uint32 botoldMSTime = getMSTime();
+
+    WorldDatabase.DirectExecute(WanderMapCreationQuery);
+    QueryResult tableExists = WorldDatabase.Query("SELECT * from creature_wander_nodes LIMIT 1");
+    if (!tableExists)
+    {
+        TC_LOG_WARN("server.loading", "Table `creature_wander_nodes` is empty. Trying to re-generate nodes... (this is a one-time action)");
+        GenerateWanderNodes();
+    }
 
     QueryResult wres = WorldDatabase.Query("SELECT id, mapid, zoneid, x, y, z, o, name FROM creature_wander_nodes");
     if (!wres)
@@ -166,7 +264,7 @@ void FillWanderMap()
         }
     }
 
-    TC_LOG_INFO("server.loading", ">> Generated %u bot wander nodes on %u maps (total %u ribs, %u tops) in %u ms",
+    TC_LOG_INFO("server.loading", ">> Loaded %u bot wander nodes on %u maps (total %u ribs, %u tops) in %u ms",
         total_nodes, uint32(WanderMap.Nodes.size()), total_connections, uint32(WanderMap.Tops.size()), GetMSTimeDiffToNow(botoldMSTime));
     TC_LOG_INFO("server.loading", "Nodes distances: min = %.3f, max = %.3f", mindist, maxdist);
 }
@@ -444,7 +542,7 @@ void BotDataMgr::LoadNpcBotGroupData()
 
 void BotDataMgr::GenerateWanderingBots()
 {
-    const uint32 WANDERING_BOTS_COUNT = 3;
+    const uint32 WANDERING_BOTS_COUNT = BotMgr::GetDesiredWanderingBotsCount();
 
     TC_LOG_INFO("server.loading", "Spawning wandering bots...");
 
@@ -452,7 +550,7 @@ void BotDataMgr::GenerateWanderingBots()
 
     if (int32(_botsExtras.size() - _existingBots.size()) < int32(WANDERING_BOTS_COUNT))
     {
-        TC_LOG_FATAL("server.loading", "Trying to generate %u bots but only %i out of %u bots aren't spawned. Aborting!",
+        TC_LOG_FATAL("server.loading", "Trying to generate %u bots but only %i out of %u bots aren't spawned. Create new bots or delete some from world. Aborting!",
             WANDERING_BOTS_COUNT, int32(_botsExtras.size() - _existingBots.size()), uint32(_botsExtras.size()));
         ASSERT(false);
     }
