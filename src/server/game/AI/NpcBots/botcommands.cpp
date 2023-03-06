@@ -1578,9 +1578,9 @@ public:
         }
 
         Creature* bot = ubot->ToCreature();
-        if (!bot || !bot->IsNPCBot())
+        if (!bot || !bot->IsNPCBot() || bot->GetBotAI()->IsWanderer())
         {
-            handler->SendSysMessage("You must select a npcbot");
+            handler->SendSysMessage("You must select a non-wandering npcbot");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -1860,6 +1860,13 @@ public:
         if (!bot)
         {
             handler->PSendSysMessage("npcbot %u not found!", *creature_id);
+            handler->SetSentErrorMessage(true);
+            return false;
+        }
+
+        if (bot->GetBotAI()->IsWanderer())
+        {
+            handler->SendSysMessage("Cannot delete wanderer npcbot");
             handler->SetSentErrorMessage(true);
             return false;
         }
@@ -2779,9 +2786,9 @@ public:
         }
 
         Creature* bot = cre->ToCreature();
-        if (!bot || !bot->IsNPCBot() || bot->GetBotAI()->GetBotOwnerGuid())
+        if (!bot || !bot->IsNPCBot() || bot->GetBotAI()->GetBotOwnerGuid() || bot->GetBotAI()->IsWanderer())
         {
-            handler->SendSysMessage("You must select uncontrolled npcbot");
+            handler->SendSysMessage("You must select uncontrolled non-wandering npcbot");
             handler->SetSentErrorMessage(true);
             return false;
         }
