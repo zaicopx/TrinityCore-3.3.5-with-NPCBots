@@ -164,6 +164,7 @@ class BotDataMgr
         static std::pair<uint8, uint8> GetZoneLevels(uint32 zoneId);
         static std::pair<uint32 /*nodeId*/, Position const*> GetWanderMapNode(uint32 mapId, uint32 curNodeId, uint32 lastNodeId, uint8 lvl);
         static Position const* GetWanderMapNodePosition(uint32 mapId, uint32 nodeId);
+        static std::string GetWanderMapNodeName(uint32 mapId, uint32 nodeId);
 
         static std::shared_mutex* GetLock();
 

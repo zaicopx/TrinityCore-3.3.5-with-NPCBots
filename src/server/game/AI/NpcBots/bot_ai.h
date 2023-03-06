@@ -9,6 +9,7 @@
 #include "Position.h"
 
 #include <tuple>
+#include <unordered_set>
 
 /*
 NpcBot System by Trickerer (onlysuffering@gmail.com)
@@ -565,13 +566,15 @@ class bot_ai : public CreatureAI
         void _autoLootCreatureItems(Player* receiver, Creature* creature, uint32 lootQualityMask, uint32 lootThreshold) const;
         void _autoLootCreature(Creature* creature);
 
+        bool _canGenerateEquipmentInSlot(uint8 slot, bool empty_only = false) const;
         bool _canUseOffHand() const;
         bool _canUseRanged() const;
         bool _canUseRelic() const;
-        bool _canEquip(Item const* newItem, uint8 slot, bool ignoreItemLevel = false) const;
+        bool _canEquip(ItemTemplate const* newProto, uint8 slot, bool ignoreItemLevel, Item const* newItem = nullptr) const;
         bool _unequip(uint8 slot, ObjectGuid receiver);
         bool _equip(uint8 slot, Item* newItem, ObjectGuid receiver);
         bool _resetEquipment(uint8 slot, ObjectGuid receiver);
+        void _generateGear();
 
         void _castBotItemUseSpell(Item const* item, SpellCastTargets const& targets/*, uint8 cast_count = 0, uint32 glyphIndex = 0*/);
 
@@ -604,7 +607,7 @@ class bot_ai : public CreatureAI
         float _getRatingMultiplier(CombatRating cr) const;
 
         float _getStatScore(uint8 stat) const;
-        float _getItemGearScore(Item const* item, uint8 forslot) const;
+        float _getItemGearScore(ItemTemplate const* iproto, uint8 forslot, Item const* item) const;
 
         void _saveStats();
 
@@ -650,6 +653,7 @@ class bot_ai : public CreatureAI
         uint8 _baseLevel;
         uint32 _travel_node_last;
         uint32 _travel_node_cur;
+        std::unordered_set<BotEquipSlot> _equipsSlotsToGenerate;
 
         float _energyFraction;
 

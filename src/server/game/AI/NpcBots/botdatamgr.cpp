@@ -114,7 +114,7 @@ void FillWanderMap()
     } while (wres->NextRow());
 
     uint32 total_connections = 0;
-    float mindist = NODE_CONNECTION_DIST_MAX;
+    float mindist = 50000.f;
     float maxdist = 0.f;
     for (decltype(WanderMap.Nodes)::value_type& mapNodes1 : WanderMap.Nodes)
     {
@@ -125,13 +125,13 @@ void FillWanderMap()
                 if (it->first == nodepair2.first)
                     continue;
 
-                if (it->second.GetExactDist2d(nodepair2.second) < NODE_CONNECTION_DIST_MAX)
+                float dist2d = it->second.GetExactDist2d(nodepair2.second);
+                if (dist2d < NODE_CONNECTION_DIST_MAX)
                 {
-                    float dist3d = it->second.GetExactDist(nodepair2.second);
-                    if (dist3d < mindist)
-                        mindist = dist3d;
-                    if (dist3d > maxdist)
-                        maxdist = dist3d;
+                    if (dist2d < mindist)
+                        mindist = dist2d;
+                    if (dist2d > maxdist)
+                        maxdist = dist2d;
 
                     it->second.connections.push_back(&nodepair2.second);
                     if (nodepair2.second.connections.empty() ||
@@ -167,7 +167,7 @@ void FillWanderMap()
     }
 
     TC_LOG_INFO("server.loading", ">> Generated %u bot wander nodes on %u maps (total %u ribs, %u tops) in %u ms",
-        total_nodes, WanderMap.Nodes.size(), total_connections, WanderMap.Tops.size(), GetMSTimeDiffToNow(botoldMSTime));
+        total_nodes, uint32(WanderMap.Nodes.size()), total_connections, uint32(WanderMap.Tops.size()), GetMSTimeDiffToNow(botoldMSTime));
     TC_LOG_INFO("server.loading", "Nodes distances: min = %.3f, max = %.3f", mindist, maxdist);
 }
 
@@ -444,16 +444,16 @@ void BotDataMgr::LoadNpcBotGroupData()
 
 void BotDataMgr::GenerateWanderingBots()
 {
-    const uint32 WANDERING_BOTS_COUNT = 5;
+    const uint32 WANDERING_BOTS_COUNT = 3;
 
     TC_LOG_INFO("server.loading", "Spawning wandering bots...");
 
     uint32 oldMSTime = getMSTime();
 
-    if (_botsExtras.size() - _existingBots.size() < WANDERING_BOTS_COUNT)
+    if (int32(_botsExtras.size() - _existingBots.size()) < int32(WANDERING_BOTS_COUNT))
     {
-        TC_LOG_FATAL("server.loading", "Trying to generate %u bots but only %u out of %u bots aren't spawned. Aborting!",
-            WANDERING_BOTS_COUNT, _botsExtras.size() - _existingBots.size(), _botsExtras.size());
+        TC_LOG_FATAL("server.loading", "Trying to generate %u bots but only %i out of %u bots aren't spawned. Aborting!",
+            WANDERING_BOTS_COUNT, int32(_botsExtras.size() - _existingBots.size()), uint32(_botsExtras.size()));
         ASSERT(false);
     }
 
@@ -591,7 +591,8 @@ void BotDataMgr::GenerateWanderingBots()
 
     CharacterDatabase.PExecute("UPDATE worldstates SET value = %u WHERE entry = %u", bot_id, uint32(BOT_GIVER_ENTRY));
 
-    TC_LOG_INFO("server.loading", ">> Spawned %u wandering bots in %u grids in %u ms", _botsWanderCreatureTemplates.size(), botgrids.size(), GetMSTimeDiffToNow(oldMSTime));
+    TC_LOG_INFO("server.loading", ">> Spawned %u wandering bots in %u grids in %u ms",
+        uint32(_botsWanderCreatureTemplates.size()), uint32(botgrids.size()), GetMSTimeDiffToNow(oldMSTime));
 }
 
 CreatureTemplate const* BotDataMgr::GetBotExtraCreatureTemplate(uint32 entry)
@@ -1189,4 +1190,16 @@ Position const* BotDataMgr::GetWanderMapNodePosition(uint32 mapId, uint32 nodeId
             return static_cast<Position const*>(&ici->second);
     }
     return nullptr;
+}
+
+std::string BotDataMgr::GetWanderMapNodeName(uint32 mapId, uint32 nodeId)
+{
+    decltype(WanderMap.Nodes)::const_iterator cit = WanderMap.Nodes.find(mapId);
+    if (cit != WanderMap.Nodes.cend())
+    {
+        decltype(WanderMap.Nodes)::value_type::second_type::const_iterator ici = cit->second.find(nodeId);
+        if (ici != cit->second.cend())
+            return ici->second.name;
+    }
+    return {};
 }
