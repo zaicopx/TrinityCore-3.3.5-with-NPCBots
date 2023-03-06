@@ -500,7 +500,7 @@ void BotDataMgr::GenerateWanderingBots()
     };
 
     std::set<uint32> botgrids;
-    for (int32 i = 0; i < WANDERING_BOTS_COUNT; ++i) // i is unused as value
+    for (int32 i = 0; i < int32(WANDERING_BOTS_COUNT); ++i) // i is unused as value
     {
         while (all_templates.find(++bot_id) != all_templates.end()) {}
 
