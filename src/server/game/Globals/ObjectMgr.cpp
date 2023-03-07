@@ -1503,11 +1503,6 @@ CreatureMovementData const* ObjectMgr::GetCreatureMovementOverride(ObjectGuid::L
 
 EquipmentInfo const* ObjectMgr::GetEquipmentInfo(uint32 entry, int8& id) const
 {
-    //npcbot
-    if (BotDataMgr::GetBotExtraCreatureTemplate(entry))
-        return BotDataMgr::GetDummyEquipmentInfo();
-    //end npcbot
-
     EquipmentInfoContainer::const_iterator itr = _equipmentInfoStore.find(entry);
     if (itr == _equipmentInfoStore.end())
         return nullptr;
