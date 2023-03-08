@@ -229,6 +229,25 @@ void GenerateBotCustomSpells()
     uint32 spellId, triggerSpellId;
     SpellInfo* sinfo;
 
+    //COMMON
+    //1) SPELL_TELEPORT_LOCAL
+    spellId = SPELL_TELEPORT_LOCAL; //7794
+    botSpellInfoOverrides.insert({ spellId, *sSpellMgr->GetSpellInfo(spellId) });
+    sinfo = &botSpellInfoOverrides.at(spellId);
+
+    sinfo->InterruptFlags = SPELL_INTERRUPT_FLAG_ABORT_ON_DMG;
+    sinfo->CastTimeEntry = sSpellCastTimesStore.LookupEntry(6); //5000ms
+    //sinfo->CastTimeEntry = sSpellCastTimesStore.LookupEntry(4); //1000ms
+    sinfo->RangeEntry = sSpellRangeStore.LookupEntry(1); //self
+    sinfo->ExplicitTargetMask = TARGET_FLAG_DEST_LOCATION;
+    sinfo->Attributes |= SPELL_ATTR0_UNAFFECTED_BY_INVULNERABILITY | SPELL_ATTR0_CASTABLE_WHILE_MOUNTED;
+    sinfo->AttributesEx2 |= SPELL_ATTR2_CAN_TARGET_NOT_IN_LOS;
+
+    sinfo->_effects[0].Effect = SPELL_EFFECT_TELEPORT_UNITS;
+    sinfo->_effects[0].TargetA = SpellImplicitTargetInfo(TARGET_UNIT_CASTER);
+    sinfo->_effects[0].TargetB = SpellImplicitTargetInfo(TARGET_DEST_DEST);
+    sinfo->_effects[0].BasePoints = 1;
+
     //BLADEMASTER
     //2) SPELL_COMBAT_SPECIAL_2H_ATTACK
     spellId = SPELL_COMBAT_SPECIAL_2H_ATTACK; //44079
