@@ -4255,11 +4255,11 @@ std::tuple<Unit*, Unit*> bot_ai::_getTargets(bool byspell, bool ranged, bool &re
         //check attackers
         u = nullptr;
         for (Unit* att : me->getAttackers())
-            if (!u || me->GetDistance(att) < me->GetDistance(u) && att != mytar && CanBotAttack(att, byspell))
+            if ((!u || me->GetDistance(att) < me->GetDistance(u)) && att != mytar && CanBotAttack(att, byspell))
                 u = att;
         if (!u && botPet)
             for (Unit* att : botPet->getAttackers())
-                if (!u || me->GetDistance(att) < me->GetDistance(u) && att != mytar && CanBotAttack(att, byspell))
+                if ((!u || me->GetDistance(att) < me->GetDistance(u)) && att != mytar && CanBotAttack(att, byspell))
                     u = att;
         if (u)
             return { u, u };
