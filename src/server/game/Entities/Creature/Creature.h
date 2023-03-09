@@ -391,6 +391,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool IsNPCBotPet() const override;
         bool IsNPCBotOrPet() const override;
         bool IsFreeBot() const;
+        bool IsWandererBot() const;
         uint8 GetBotClass() const;
         uint32 GetBotRoles() const;
         bot_ai* GetBotAI() const { return bot_AI; }
