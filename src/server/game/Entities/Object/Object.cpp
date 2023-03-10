@@ -2984,10 +2984,18 @@ bool WorldObject::IsValidAttackTarget(WorldObject const* target, SpellInfo const
     }
 
     //npcbot: CvC case fix for bots, still a TODO
-    if (unit && unitTarget && !unit->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        !unitTarget->HasUnitFlag(UNIT_FLAG_PLAYER_CONTROLLED) &&
-        ((IsNPCBotOrPet() && !ToCreature()->IsFreeBot()) || (target->IsNPCBotOrPet() && !target->ToCreature()->IsFreeBot())))
-        return GetReactionTo(target) <= REP_NEUTRAL || target->GetReactionTo(this) <= REP_NEUTRAL;
+    if (unit && unitTarget &&
+        ((IsNPCBotOrPet() && ToCreature()->IsFreeBot()) || (target->IsNPCBotOrPet() && target->ToCreature()->IsFreeBot())) &&
+        !IsFriendlyTo(unitTarget) && !unitTarget->IsFriendlyTo(this))
+    {
+        auto const* ft1 = sFactionTemplateStore.LookupEntry(unit->GetFaction());
+        auto const* ft2 = sFactionTemplateStore.LookupEntry(unitTarget->GetFaction());
+        auto const* fe1 = ft1 ? sFactionStore.LookupEntry(ft1->Faction) : nullptr;
+        auto const* fe2 = ft2 ? sFactionStore.LookupEntry(ft2->Faction) : nullptr;
+        if ((IsNPCBotOrPet() && fe2 && fe2->CanHaveReputation() && ReputationMgr::ReputationToRank(fe2->ReputationBase[0]) >= REP_NEUTRAL) ||
+            (target->IsNPCBotOrPet() && fe1 && fe1->CanHaveReputation() && ReputationMgr::ReputationToRank(fe1->ReputationBase[0]) >= REP_NEUTRAL))
+            return false;
+    }
     //end npcbot
 
     // CvC case - can attack each other only when one of them is hostile
