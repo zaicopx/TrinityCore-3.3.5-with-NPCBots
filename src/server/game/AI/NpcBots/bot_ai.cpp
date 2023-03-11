@@ -14026,7 +14026,7 @@ void bot_ai::InitEquips()
                 gss << " " << uint32(i);
             }
         }
-        TC_LOG_DEBUG("npcbots", gss.str().c_str());
+        TC_LOG_TRACE("npcbots", gss.str().c_str());
     }
     else
     {
