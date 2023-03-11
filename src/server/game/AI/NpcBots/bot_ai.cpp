@@ -2238,9 +2238,9 @@ void bot_ai::SetStats(bool force)
         }
         else
         {
-            uint8 mapmaxlevel = std::min<uint8>(mylevel, BotDataMgr::GetMaxLevelForMapId(me->GetMap()->GetEntry()->ID));
+            uint8 mapmaxlevel = BotDataMgr::GetMaxLevelForMapId(me->GetMap()->GetEntry()->ID);
             mapmaxlevel += BotDataMgr::GetLevelBonusForBotRank(me->GetCreatureTemplate()->rank);
-            mylevel = std::max<uint8>(mylevel, _baseLevel + std::min<uint8>(uint16(_killsCount / std::max<uint8>(mylevel * 5 / 2, 20)), mapmaxlevel));
+            mylevel = std::max<uint8>(mylevel, std::min<uint8>(_baseLevel + uint8(_killsCount / std::max<uint8>(mylevel * 5 / 2, 20)), mapmaxlevel));
         }
     }
     else
