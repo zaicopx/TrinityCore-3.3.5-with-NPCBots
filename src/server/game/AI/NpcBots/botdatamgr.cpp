@@ -542,6 +542,17 @@ void BotDataMgr::GenerateWanderingBots()
 {
     using NodeType = BotTravelGraph::BotTravelNode;
 
+    const std::map<uint8, uint32> wbot_faction_for_ex_class = {
+        {BOT_CLASS_BM, 2u},
+        {BOT_CLASS_SPHYNX, 14u},
+        {BOT_CLASS_ARCHMAGE, 1u},
+        {BOT_CLASS_DREADLORD, 14u},
+        {BOT_CLASS_SPELLBREAKER, 1610u},
+        {BOT_CLASS_DARK_RANGER, 14u},
+        {BOT_CLASS_NECROMANCER, 14u},
+        {BOT_CLASS_SEA_WITCH, 14u}
+    };
+
     const uint32 WANDERING_BOTS_COUNT = BotMgr::GetDesiredWanderingBotsCount();
 
     if (WANDERING_BOTS_COUNT == 0)
@@ -636,8 +647,9 @@ void BotDataMgr::GenerateWanderingBots()
         NpcBotExtras const* orig_extras = SelectNpcBotExtras(orig_template->Entry);
         ASSERT_NOTNULL(orig_extras);
         ChrRacesEntry const* rentry = sChrRacesStore.LookupEntry(orig_extras->race);
+        uint32 bot_faction = (bot_class >= BOT_CLASS_EX_START) ? wbot_faction_for_ex_class.find(bot_class)->second : rentry ? rentry->FactionID : 14;
 
-        NpcBotData* bot_data = new NpcBotData(bot_ai::DefaultRolesForClass(bot_class), rentry ? rentry->FactionID : 14, bot_ai::DefaultSpecForClass(bot_class));
+        NpcBotData* bot_data = new NpcBotData(bot_ai::DefaultRolesForClass(bot_class), bot_faction, bot_ai::DefaultSpecForClass(bot_class));
         _botsData[bot_id] = bot_data;
         NpcBotExtras* bot_extras = new NpcBotExtras();
         bot_extras->bclass = bot_class;
@@ -676,7 +688,7 @@ void BotDataMgr::GenerateWanderingBots()
         map->LoadGrid(spawnLoc->m_positionX, spawnLoc->m_positionY);
         ASSERT(!map->Instanceable(), map->GetDebugInfo().c_str());
 
-        TC_LOG_INFO("server.loading", "Spawning wandering bot: %s (%u) class %u race %u fac %u, location: mapId %u %s (%s)",
+        TC_LOG_INFO("npcbots", "Spawning wandering bot: %s (%u) class %u race %u fac %u, location: mapId %u %s (%s)",
             bot_template.Name.c_str(), bot_id, uint32(bot_extras->bclass), uint32(bot_extras->race), bot_data->faction,
             spawnLoc->m_mapId, spawnLoc->ToString().c_str(), spawnLoc->name.c_str());
         Position spos;
@@ -1290,6 +1302,7 @@ std::pair<uint8, uint8> BotDataMgr::GetZoneLevels(uint32 zoneId)
         case 41: // Deadwind Pass
             return { 50, 60 };
         case 1377: // Silithus
+        case 2017: // Stratholme
             return { 53, 60 };
         case 139: // Eastern Plaguelands
         case 618: // Winterspring
